@@ -1,35 +1,115 @@
-# zenon-store-
+# 🛒 Tano Store
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+A modern digital marketplace for selling digital products with a clean, fast, and responsive user experience.
 
-## Built with v0
+## ✨ Features
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+- 🛍️ Digital product marketplace
+- 🔐 Secure authentication
+- 👤 User dashboard
+- 🛠️ Admin dashboard
+- 📦 Product management
+- 💳 Payment gateway integration
+- ⚡ Automatic digital product delivery
+- 📜 Order history
+- 🔍 Product search & filtering
+- ❤️ Wishlist support
+- 🌙 Dark mode
+- 📱 Fully responsive
+- 🎨 Modern UI/UX
+- 🚀 Fast performance
+- 🔒 Secure API & database integration
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_7BzTzePdYBoFPPmghrHrxKe8uiC2)
+## 🛠️ Tech Stack
 
-## Getting Started
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Shadcn UI
+- Radix UI
+- Framer Motion
+- Supabase
+- React Hook Form
+- Zod
+- SweetAlert2
 
-First, run the development server:
+## 📦 Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/Tanojs/tano-store.git
+```
+
+Navigate to the project folder:
+
+```bash
+cd tano-store
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+## 🚀 Development
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open your browser and visit:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-## Learn More
+## 📦 Production
 
-To learn more, take a look at the following resources:
+Build the application:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+```bash
+npm run build
+```
 
-<a href="https://v0.app/chat/api/kiro/clone/akmxx46/zenon-store-" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+Start the production server:
+
+```bash
+npm start
+```
+
+## ⚙️ Environment Variables
+
+Create a `.env.local` file in the project root and configure the required environment variables before running the application.
+
+## 📁 Project Structure
+
+```
+app/
+components/
+hooks/
+lib/
+public/
+styles/
+middleware.ts
+```
+
+## 📄 License
+
+This project is proprietary software owned by **Tano Store**.
+
+Unauthorized copying, modification, redistribution, or resale without permission is prohibited.
+
+---
+
+<div align="center">
+
+**Tano**
+
+Modern • Fast • Secure • Responsive
+
+</div>
