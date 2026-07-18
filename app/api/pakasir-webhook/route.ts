@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     const payload = await request.json();
     console.log("Webhook Pakasir diterima:", JSON.stringify(payload));
 
-    const orderId = payload?.order_id;
-    if (!orderId) {
+    const pakasirOrderId = payload?.order_id; // format: "TANO-482"
+    if (!pakasirOrderId) {
       return NextResponse.json({ error: "order_id tidak ada" }, { status: 400 });
     }
 
@@ -45,15 +45,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
+    // order_id yang dikirim ke Pakasir formatnya "TANO-<order_seq>" (lihat app/api/checkout/route.ts).
+    // Ambil kembali angkanya untuk mencari order kita.
+    const match = String(pakasirOrderId).match(/^TANO-(\d+)$/);
+    if (!match) {
+      console.error("Webhook: format order_id tidak dikenali ->", pakasirOrderId);
+      return NextResponse.json({ error: "Format order_id tidak dikenali" }, { status: 400 });
+    }
+    const orderSeq = parseInt(match[1], 10);
+
     // 1. Ambil order dari database kita
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
       .select("id, status, total_price")
-      .eq("id", orderId)
+      .eq("order_seq", orderSeq)
       .single();
 
     if (orderError || !orderData) {
-      console.error("Webhook: order tidak ditemukan ->", orderId);
+      console.error("Webhook: order tidak ditemukan ->", pakasirOrderId);
       return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
     }
 
@@ -65,11 +74,12 @@ export async function POST(request: Request) {
 
     // 3. VERIFIKASI ULANG ke server Pakasir — pertahanan utama terhadap webhook
     //    palsu. Hanya lanjut jika Pakasir SENDIRI mengonfirmasi status completed
-    //    dan nominalnya sesuai dengan tagihan order ini.
-    const verifiedTransaction = await verifyWithPakasir(orderId, Number(orderData.total_price));
+    //    dan nominalnya sesuai dengan tagihan order ini. Gunakan order_id yang
+    //    sama persis dengan yang dikirim ke Pakasir saat membuat transaksi (TANO-xxx).
+    const verifiedTransaction = await verifyWithPakasir(pakasirOrderId, Number(orderData.total_price));
 
     if (!verifiedTransaction || verifiedTransaction.status !== "completed") {
-      console.error("Webhook: verifikasi ke Pakasir gagal / belum completed untuk order", orderId);
+      console.error("Webhook: verifikasi ke Pakasir gagal / belum completed untuk order", pakasirOrderId);
       return NextResponse.json(
         { error: "Verifikasi transaksi ke Pakasir gagal" },
         { status: 202 }
@@ -78,16 +88,17 @@ export async function POST(request: Request) {
 
     if (Number(verifiedTransaction.amount) !== Number(orderData.total_price)) {
       console.error(
-        `Webhook: nominal tidak cocok untuk order ${orderId}. Diharapkan ${orderData.total_price}, dari Pakasir ${verifiedTransaction.amount}`
+        `Webhook: nominal tidak cocok untuk order ${pakasirOrderId}. Diharapkan ${orderData.total_price}, dari Pakasir ${verifiedTransaction.amount}`
       );
       return NextResponse.json({ error: "Nominal pembayaran tidak sesuai" }, { status: 409 });
     }
 
     // 4. Lunas terverifikasi -> jalankan fulfillment yang ATOMIC lewat fungsi
     //    database fulfill_order() (kunci baris, alokasi stok anti race condition,
-    //    dan idempotent — lihat supabase/schema.sql).
+    //    dan idempotent — lihat supabase/schema.sql). Dipakai UUID asli (orderData.id),
+    //    bukan TANO-xxx, karena itu primary key sesungguhnya di tabel orders.
     const { error: rpcError } = await supabase.rpc("fulfill_order", {
-      p_order_id: orderId,
+      p_order_id: orderData.id,
       p_verified_amount: verifiedTransaction.amount,
     });
 
