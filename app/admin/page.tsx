@@ -39,6 +39,7 @@ interface Product {
   is_active: boolean;
   created_at: string;
   image_url: string | null;
+  redirect_url: string | null;
   categories: { name: string } | null;
 }
 
@@ -136,7 +137,7 @@ export default function AdminDashboard() {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("products")
-      .select("id, title, price, category_id, delivery_type, is_active, created_at, image_url, categories(name)")
+      .select("id, title, price, category_id, delivery_type, is_active, created_at, image_url, redirect_url, categories(name)")
       .order("created_at", { ascending: false });
     if (!error && data) {
       setProducts(data as any);
@@ -270,8 +271,11 @@ export default function AdminDashboard() {
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productTitle || !productPrice) return;
-    if (deliveryType === "file" && !deliveryInfo.trim()) {
+    const isRedirectProduct = !!productRedirectUrl.trim();
+
+    if (!productTitle) return;
+    if (!isRedirectProduct && !productPrice) return;
+    if (!isRedirectProduct && deliveryType === "file" && !deliveryInfo.trim()) {
       Swal.fire("Gagal", "Tautan/link produk wajib diisi untuk tipe File.", "error");
       return;
     }
@@ -293,10 +297,10 @@ export default function AdminDashboard() {
       {
         title: productTitle,
         description: productDescription || null,
-        price: parseInt(productPrice),
+        price: isRedirectProduct ? 0 : parseInt(productPrice),
         category_id: productCategoryId || null,
-        delivery_type: deliveryType,
-        delivery_info: deliveryType === "file" ? deliveryInfo : null,
+        delivery_type: isRedirectProduct ? "account" : deliveryType,
+        delivery_info: !isRedirectProduct && deliveryType === "file" ? deliveryInfo : null,
         image_url: imageUrl,
         redirect_url: productRedirectUrl.trim() || null,
       },
@@ -607,58 +611,6 @@ export default function AdminDashboard() {
                   onChange={(e) => setProductDescription(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Harga (Rp)</label>
-                <input
-                  type="number" required min={0}
-                  className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
-                  placeholder="Contoh: 5000"
-                  value={productPrice}
-                  onChange={(e) => setProductPrice(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Kategori</label>
-                  <select
-                    className="w-full p-4 border border-border bg-muted rounded-2xl text-sm font-semibold text-foreground outline-none"
-                    value={productCategoryId}
-                    onChange={(e) => setProductCategoryId(e.target.value)}
-                  >
-                    <option value="">Tanpa kategori</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                  {categories.length === 0 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Belum ada kategori, tambahkan dulu di tab Kategori.</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Metode Pengiriman</label>
-                  <select
-                    className="w-full p-4 border border-border bg-muted rounded-2xl text-sm font-semibold text-foreground outline-none"
-                    value={deliveryType}
-                    onChange={(e) => setDeliveryType(e.target.value)}
-                  >
-                    <option value="account">Account (dari Stok)</option>
-                    <option value="file">File / Tautan Unduh</option>
-                  </select>
-                </div>
-              </div>
-
-              {deliveryType === "file" && (
-                <div>
-                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Tautan / Link File Produk</label>
-                  <input
-                    type="url" required
-                    className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
-                    placeholder="https://drive.google.com/..."
-                    value={deliveryInfo}
-                    onChange={(e) => setDeliveryInfo(e.target.value)}
-                  />
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Link Redirect (opsional)</label>
@@ -670,9 +622,82 @@ export default function AdminDashboard() {
                   onChange={(e) => setProductRedirectUrl(e.target.value)}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Kalau diisi, tombol Beli di produk ini akan langsung membuka link ini di tab baru — <span className="font-semibold">tidak lewat pembayaran/checkout di web ini sama sekali.</span> Kosongkan kalau mau tetap pakai checkout QRIS otomatis.
+                  Kalau diisi, tombol Beli di produk ini akan langsung membuka link ini di tab baru — <span className="font-semibold">tidak lewat pembayaran/checkout di web ini sama sekali.</span> Kosongkan kalau mau tetap pakai checkout QRIS otomatis (harga & stok wajib diisi).
                 </p>
               </div>
+
+              {!productRedirectUrl.trim() && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Harga (Rp)</label>
+                    <input
+                      type="number" required min={0}
+                      className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
+                      placeholder="Contoh: 5000"
+                      value={productPrice}
+                      onChange={(e) => setProductPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Kategori</label>
+                      <select
+                        className="w-full p-4 border border-border bg-muted rounded-2xl text-sm font-semibold text-foreground outline-none"
+                        value={productCategoryId}
+                        onChange={(e) => setProductCategoryId(e.target.value)}
+                      >
+                        <option value="">Tanpa kategori</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                      {categories.length === 0 && (
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Belum ada kategori, tambahkan dulu di tab Kategori.</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Metode Pengiriman</label>
+                      <select
+                        className="w-full p-4 border border-border bg-muted rounded-2xl text-sm font-semibold text-foreground outline-none"
+                        value={deliveryType}
+                        onChange={(e) => setDeliveryType(e.target.value)}
+                      >
+                        <option value="account">Account (dari Stok)</option>
+                        <option value="file">File / Tautan Unduh</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {deliveryType === "file" && (
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Tautan / Link File Produk</label>
+                      <input
+                        type="url" required
+                        className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
+                        placeholder="https://drive.google.com/..."
+                        value={deliveryInfo}
+                        onChange={(e) => setDeliveryInfo(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {productRedirectUrl.trim() && (
+                <div>
+                  <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Kategori (opsional)</label>
+                  <select
+                    className="w-full p-4 border border-border bg-muted rounded-2xl text-sm font-semibold text-foreground outline-none"
+                    value={productCategoryId}
+                    onChange={(e) => setProductCategoryId(e.target.value)}
+                  >
+                    <option value="">Tanpa kategori</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Foto Produk (opsional)</label>
@@ -739,9 +764,17 @@ export default function AdminDashboard() {
                             </td>
                             <td className="p-4 font-semibold text-foreground">{p.title}</td>
                             <td className="p-4 text-muted-foreground">{p.categories?.name || "-"}</td>
-                            <td className="p-4 font-bold text-purple-600">Rp {Number(p.price).toLocaleString("id-ID")}</td>
+                            <td className="p-4 font-bold text-purple-600">
+                              {p.redirect_url ? (
+                                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">🔗 Redirect</span>
+                              ) : (
+                                <>Rp {Number(p.price).toLocaleString("id-ID")}</>
+                              )}
+                            </td>
                             <td className="p-4">
-                              {p.delivery_type === "file" ? (
+                              {p.redirect_url ? (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              ) : p.delivery_type === "file" ? (
                                 <span className="text-xs text-muted-foreground">Tak terbatas</span>
                               ) : (
                                 <span className="text-xs font-bold text-foreground">{stock?.available ?? 0} tersedia</span>
