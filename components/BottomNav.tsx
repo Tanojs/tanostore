@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, History } from "lucide-react";
+import { Home, History, UserCircle } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -12,7 +12,7 @@ export function BottomNav() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 block sm:hidden">
       {/* Container Navigasi */}
-      <div className="bg-card/80 backdrop-blur-lg border-t border-border px-8 py-2 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.05)] transition-colors duration-300">
+      <div className="bg-card/80 backdrop-blur-lg border-t border-border px-4 py-2 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.05)] transition-colors duration-300">
         
         {/* TOMBOL 1: HOME */}
         <Link 
@@ -38,6 +38,19 @@ export function BottomNav() {
         >
           <History className="w-5 h-5" />
           <span className="text-[10px] uppercase tracking-wider">History</span>
+        </Link>
+
+        {/* TOMBOL 3: PROFIL */}
+        <Link 
+          href="/profile" 
+          className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all ${
+            isActive("/profile") 
+              ? "text-[#6C3CE1] dark:text-purple-400 scale-105 font-bold" 
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <UserCircle className="w-5 h-5" />
+          <span className="text-[10px] uppercase tracking-wider">Profil</span>
         </Link>
 
       </div>
