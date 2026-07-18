@@ -45,6 +45,7 @@ interface Product {
 
 interface Order {
   id: string;
+  order_seq: number;
   created_at: string;
   total_price: number;
   status: string;
@@ -123,7 +124,7 @@ export default function AdminDashboard() {
   const fetchOrders = async () => {
     const { data, error } = await supabase
       .from("orders")
-      .select("id, created_at, total_price, status, whatsapp, products(title)")
+      .select("id, order_seq, created_at, total_price, status, whatsapp, products(title)")
       .order("created_at", { ascending: false })
       .limit(100);
     if (!error && data) setOrders(data as any);
@@ -472,7 +473,7 @@ export default function AdminDashboard() {
                     ) : (
                       orders.map((order) => (
                         <tr key={order.id} className="hover:bg-muted/50 transition-colors">
-                          <td className="p-4 pl-6 font-mono font-bold text-xs text-muted-foreground">#{order.id.slice(0, 8)}</td>
+                          <td className="p-4 pl-6 font-mono font-bold text-xs text-muted-foreground">TANO-{order.order_seq}</td>
                           <td className="p-4 font-semibold text-foreground">{order.products?.title || "-"}</td>
                           <td className="p-4 font-semibold text-foreground">{order.whatsapp}</td>
                           <td className="p-4 font-bold text-purple-600">Rp {Number(order.total_price).toLocaleString("id-ID")}</td>
