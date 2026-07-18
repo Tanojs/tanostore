@@ -8,6 +8,7 @@ const supabase = createClient();
 
 interface OrderRow {
   id: string;
+  order_seq: number;
   status: string;
   quantity: number;
   total_price: number;
@@ -26,7 +27,7 @@ export default function CekOrderPage() {
       // jadi query ini otomatis aman tanpa perlu parameter tambahan.
       const { data, error } = await supabase
         .from("orders")
-        .select("id, status, quantity, total_price, account_data, created_at, products(title)")
+        .select("id, order_seq, status, quantity, total_price, account_data, created_at, products(title)")
         .order("created_at", { ascending: false });
 
       if (!error && data) setOrders(data as any);
@@ -82,7 +83,7 @@ export default function CekOrderPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground font-bold uppercase">Invoice ID</p>
-                        <p className="font-black text-foreground">#{o.id.slice(0, 8)}</p>
+                        <p className="font-black text-foreground">TANO-{o.order_seq}</p>
                       </div>
                     </div>
                     <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${badge.className}`}>
