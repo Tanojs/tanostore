@@ -134,7 +134,7 @@ export function ProductsSection() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,200px))] justify-center gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
           {filteredProducts.map((product) => {
             // Produk dengan redirect_url dianggap selalu tersedia (langsung ke link luar, bukan checkout).
             // Tipe 'file' = pengiriman via link setelah bayar, dianggap selalu tersedia (stock null).
