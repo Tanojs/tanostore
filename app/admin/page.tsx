@@ -80,6 +80,7 @@ export default function AdminDashboard() {
   const [productCategoryId, setProductCategoryId] = useState("");
   const [deliveryType, setDeliveryType] = useState("account");
   const [deliveryInfo, setDeliveryInfo] = useState("");
+  const [productRedirectUrl, setProductRedirectUrl] = useState("");
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -248,6 +249,7 @@ export default function AdminDashboard() {
         delivery_type: deliveryType,
         delivery_info: deliveryType === "file" ? deliveryInfo : null,
         image_url: imageUrl,
+        redirect_url: productRedirectUrl.trim() || null,
       },
     ]);
 
@@ -261,6 +263,7 @@ export default function AdminDashboard() {
       setProductDescription("");
       setDeliveryInfo("");
       setProductImageFile(null);
+      setProductRedirectUrl("");
       fetchProducts();
     }
   };
@@ -599,6 +602,20 @@ export default function AdminDashboard() {
               )}
 
               <div>
+                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Link Redirect (opsional)</label>
+                <input
+                  type="url"
+                  className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
+                  placeholder="https://wa.me/62xxx atau link toko luar"
+                  value={productRedirectUrl}
+                  onChange={(e) => setProductRedirectUrl(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Kalau diisi, tombol Beli di produk ini akan langsung membuka link ini di tab baru — <span className="font-semibold">tidak lewat pembayaran/checkout di web ini sama sekali.</span> Kosongkan kalau mau tetap pakai checkout QRIS otomatis.
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Foto Produk (opsional)</label>
                 <input
                   type="file"
@@ -704,7 +721,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 4: STOK */}
+{/* TAB 4: STOK */}
         {activeTab === "stock" && (
           <div className="max-w-3xl mx-auto md:mx-0">
             <h1 className="text-xl sm:text-2xl font-black text-foreground mb-2">Kelola Stok 🔐</h1>
