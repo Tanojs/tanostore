@@ -91,7 +91,7 @@ export function FloatingWhatsApp() {
               <div className="p-1 bg-blue-500 text-white rounded-md">
                 <Send className="w-3.5 h-3.5" />
               </div>
-              Telegram Bot
+              Telegram
             </a>
           </motion.div>
         )}
