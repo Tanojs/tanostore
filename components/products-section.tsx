@@ -23,11 +23,10 @@ export interface Product {
   category_slug: string | null;
   delivery_type: "account" | "file";
   image_url?: string | null;
-  stock: number | null; // null = tidak terbatas (produk tipe file)
+  stock: number | null;
   created_at: string;
 }
 
-// Palet warna badge kategori
 const BADGE_COLORS = [
   "bg-[#6C3CE1]",
   "bg-purple-600",
@@ -98,7 +97,6 @@ export function ProductsSection() {
     <section id="products" className="py-8 bg-background text-foreground px-3 sm:px-6 transition-colors duration-300 min-h-[450px] flex flex-col justify-between">
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
 
-        {/* Kategori Filter */}
         <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar justify-center">
           <button
             onClick={() => setActiveCategory("semua")}
@@ -125,20 +123,17 @@ export function ProductsSection() {
           ))}
         </div>
 
-        {/* Label Jumlah Produk */}
         <div className="mb-4 text-center sm:text-left">
           <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
             {activeCategoryLabel} <span className="text-[#6C3CE1]">({filteredProducts.length})</span>
           </h2>
         </div>
 
-        {/* Kondisi Jika Produk Kosong */}
         {filteredProducts.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-16 border border-dashed border-border rounded-[24px] bg-card/30 my-auto">
             <p className="text-muted-foreground text-sm font-medium">Tidak ada produk dalam kategori ini.</p>
           </div>
         ) : (
-          {/* Grid Layout yang Aman & Kokoh */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start items-stretch auto-rows-max">
             {filteredProducts.map((product) => {
               const isOutOfStock = product.delivery_type === "account" && (product.stock ?? 0) <= 0;
