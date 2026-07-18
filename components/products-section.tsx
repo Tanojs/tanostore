@@ -178,10 +178,12 @@ export function ProductsSection() {
                     <h3 className="font-bold text-foreground text-sm group-hover:text-[#6C3CE1] transition-colors line-clamp-1 leading-snug">
                       {product.title}
                     </h3>
-                    <div className="text-[#6C3CE1] dark:text-purple-400 font-extrabold text-sm sm:text-base mt-1.5 border-t border-border/40 pt-1.5">
-                      {formatPrice(product.price)}
-                    </div>
-                    {!isOutOfStock && (
+                    {!product.redirect_url && (
+                      <div className="text-[#6C3CE1] dark:text-purple-400 font-extrabold text-sm sm:text-base mt-1.5 border-t border-border/40 pt-1.5">
+                        {formatPrice(product.price)}
+                      </div>
+                    )}
+                    {!isOutOfStock && !product.redirect_url && (
                       <div className="text-[10px] text-muted-foreground mt-1">
                         {product.stock === null ? "Tersedia" : `Stok: ${product.stock}`}
                       </div>
