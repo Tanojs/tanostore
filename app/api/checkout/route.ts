@@ -74,6 +74,7 @@ export async function POST(request: Request) {
 
     // 4. SIMPAN ORDER BARU (status pending). RLS memastikan user_id = user yang login
     //    dan status yang boleh di-insert hanya 'pending' — lihat supabase/schema.sql.
+    //    order_seq diisi otomatis oleh trigger database (nomor acak unik).
     const { data: orderData, error: insertError } = await supabase
       .from("orders")
       .insert([
@@ -88,13 +89,18 @@ export async function POST(request: Request) {
           status: "pending",
         },
       ])
-      .select("id")
+      .select("id, order_seq")
       .single();
 
     if (insertError || !orderData) {
       console.error("Gagal simpan order:", insertError);
       return NextResponse.json({ error: "Gagal membuat pesanan" }, { status: 500 });
     }
+
+    // Referensi yang dikirim ke Pakasir (muncul di dashboard Pakasir & histori transaksi
+    // mereka), dibuat lebih rapi daripada UUID mentah. Webhook nanti mem-parsing ulang
+    // format ini untuk mencocokkan ke order kita — lihat app/api/pakasir-webhook/route.ts.
+    const pakasirOrderId = `TANO-${orderData.order_seq}`;
 
     // 5. PANGGIL API PAKASIR UNTUK GENERATE QRIS
     try {
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           project: process.env.PAKASIR_PROJECT,
-          order_id: orderData.id,
+          order_id: pakasirOrderId,
           amount: totalAmount,
           api_key: process.env.PAKASIR_API_KEY,
         }),
