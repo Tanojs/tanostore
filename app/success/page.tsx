@@ -20,7 +20,7 @@ function SuccessContent() {
     }
     supabase
       .from('orders')
-      .select('id, status, account_data')
+      .select('id, order_seq, status, account_data')
       .eq('id', orderId)
       .single()
       .then(({ data, error }) => {
@@ -56,7 +56,7 @@ function SuccessContent() {
       <div className="max-w-sm w-full mx-auto bg-card border border-border rounded-3xl shadow-lg p-8 text-center">
         <h1 className="text-2xl font-bold text-green-600 dark:text-green-400">Berhasil!</h1>
         <p className="mt-4 text-muted-foreground">Nomor Pesanan:</p>
-        <div className="text-xl font-black text-purple-600 dark:text-purple-400 my-2 break-all">{order.id}</div>
+        <div className="text-xl font-black text-purple-600 dark:text-purple-400 my-2 break-all">TANO-{order.order_seq}</div>
 
         <div className="mt-6 p-4 bg-muted rounded-xl">
           {order.status === 'paid' ? (
