@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Menu, X, MessageCircle, Sun, Moon, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, MessageCircle, Sun, Moon, User, LogOut, LayoutDashboard, UserCircle } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -134,6 +134,13 @@ export function Navbar() {
                       Admin
                     </Link>
                   )}
+                  <Link
+                    href="/profile"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-[#6C3CE1] dark:hover:text-purple-400"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    Profil
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-600 cursor-pointer"
@@ -205,6 +212,14 @@ export function Navbar() {
                       Dasbor Admin
                     </Link>
                   )}
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground hover:text-[#6C3CE1] px-3 py-2.5 font-semibold"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    Profil Saya
+                  </Link>
                   <button
                     onClick={() => {
                       setIsOpen(false);
