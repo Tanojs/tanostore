@@ -7,7 +7,7 @@ import { FloatingWhatsApp } from "@/components/floating-whatsapp";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0d0d0d]">
+    <main className="bg-background">
       <Navbar />
       <HeroSection />
       <ProductsSection />
