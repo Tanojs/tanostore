@@ -133,7 +133,7 @@ export function ProductsSection() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,200px))] justify-center gap-4">
           {filteredProducts.map((product) => {
             // Tipe 'file' = pengiriman via link, dianggap selalu tersedia (stock null).
             const isOutOfStock = product.delivery_type === "account" && (product.stock ?? 0) <= 0;
