@@ -204,8 +204,8 @@ function CheckoutContent() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="bg-card border border-border p-8 rounded-3xl shadow-xl text-center w-full max-w-sm">
           <h2 className="font-bold text-xl mb-4 text-foreground">Scan QRIS</h2>
-          <div className="border-2 border-dashed border-border p-4 rounded-2xl mb-4 bg-white">
-            <div className="w-full max-w-[200px] aspect-square mx-auto">
+          <div className="border-2 border-dashed border-border p-4 rounded-2xl mb-4 bg-white w-fit mx-auto">
+            <div className="w-[min(200px,60vw)] aspect-square">
               <QRCodeSVG value={qrString} size={200} className="w-full h-full" />
             </div>
           </div>
