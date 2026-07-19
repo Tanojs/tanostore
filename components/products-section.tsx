@@ -149,32 +149,32 @@ export function ProductsSection() {
                   isOutOfStock ? "opacity-60 grayscale" : "hover:border-[#6C3CE1]/40"
                 }`}
               >
-                <div className="relative aspect-square w-full bg-zinc-200 dark:bg-zinc-800 rounded-[18px] overflow-hidden shrink-0 flex items-center justify-center mb-3">
-                  {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                    />
-                  ) : (
-                    <Server className="w-10 h-10 text-[#6C3CE1] dark:text-purple-400" />
-                  )}
+                <Link href={`/product/${product.id}`} className="contents">
+                  <div className="relative aspect-square w-full bg-zinc-200 dark:bg-zinc-800 rounded-[18px] overflow-hidden shrink-0 flex items-center justify-center mb-3 cursor-pointer">
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.title}
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                      />
+                    ) : (
+                      <Server className="w-10 h-10 text-[#6C3CE1] dark:text-purple-400" />
+                    )}
 
-                  <div className="absolute top-2 right-2">
-                    <span className={`${badgeColor} text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-[0.5px]`}>
-                      {badgeLabel}
-                    </span>
+                    <div className="absolute top-2 right-2">
+                      <span className={`${badgeColor} text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-[0.5px]`}>
+                        {badgeLabel}
+                      </span>
+                    </div>
+
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-[18px]">
+                        <span className="text-white font-bold text-xs bg-red-600 px-3 py-1 rounded-full">STOK HABIS</span>
+                      </div>
+                    )}
                   </div>
 
-                  {isOutOfStock && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-[18px]">
-                      <span className="text-white font-bold text-xs bg-red-600 px-3 py-1 rounded-full">STOK HABIS</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col justify-between flex-1 px-1">
-                  <div className="mb-2.5">
+                  <div className="mb-2.5 px-1 cursor-pointer">
                     <h3 className="font-bold text-foreground text-sm group-hover:text-[#6C3CE1] transition-colors line-clamp-1 leading-snug">
                       {product.title}
                     </h3>
@@ -189,7 +189,9 @@ export function ProductsSection() {
                       </div>
                     )}
                   </div>
+                </Link>
 
+                <div className="flex flex-col justify-between flex-1 px-1">
                   {isOutOfStock ? (
                     <button
                       disabled
