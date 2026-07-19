@@ -188,6 +188,11 @@ export function ProductsSection() {
                         {product.stock === null ? "Tersedia" : `Stok: ${product.stock}`}
                       </div>
                     )}
+                    {product.redirect_url && (
+                      <div className="text-[11px] text-muted-foreground mt-1.5 border-t border-border/40 pt-1.5 line-clamp-2 min-h-[2.2em]">
+                        {product.description || "Klik untuk lihat detail"}
+                      </div>
+                    )}
                   </div>
                 </Link>
 
