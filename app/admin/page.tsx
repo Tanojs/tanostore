@@ -83,6 +83,9 @@ export default function AdminDashboard() {
   const [productCategoryId, setProductCategoryId] = useState("");
   const [deliveryType, setDeliveryType] = useState("account");
   const [deliveryInfo, setDeliveryInfo] = useState("");
+  const [fileDeliveryMode, setFileDeliveryMode] = useState<"upload" | "link">("upload");
+  const [productDeliveryFile, setProductDeliveryFile] = useState<File | null>(null);
+  const [uploadingDeliveryFile, setUploadingDeliveryFile] = useState(false);
   const [productRedirectUrl, setProductRedirectUrl] = useState("");
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -171,6 +174,30 @@ export default function AdminDashboard() {
     }
 
     const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  // Upload file produk digital (bukan foto) ke bucket "product-files", dipakai
+  // untuk produk delivery_type = 'file' yang filenya diupload langsung (bukan link luar).
+  const uploadProductDeliveryFile = async (file: File): Promise<string | null> => {
+    if (file.size > 50 * 1024 * 1024) {
+      Swal.fire("Gagal", "Ukuran file maksimal 50MB. Untuk file lebih besar, pakai opsi Link Eksternal.", "error");
+      return null;
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${crypto.randomUUID()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("product-files")
+      .upload(filePath, file, { cacheControl: "3600", upsert: false });
+
+    if (uploadError) {
+      Swal.fire("Gagal Upload File", uploadError.message, "error");
+      return null;
+    }
+
+    const { data } = supabase.storage.from("product-files").getPublicUrl(filePath);
     return data.publicUrl;
   };
 
@@ -273,11 +300,17 @@ export default function AdminDashboard() {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const isRedirectProduct = !!productRedirectUrl.trim();
+    const isFileUploadMode = !isRedirectProduct && deliveryType === "file" && fileDeliveryMode === "upload";
+    const isFileLinkMode = !isRedirectProduct && deliveryType === "file" && fileDeliveryMode === "link";
 
     if (!productTitle) return;
     if (!isRedirectProduct && !productPrice) return;
-    if (!isRedirectProduct && deliveryType === "file" && !deliveryInfo.trim()) {
-      Swal.fire("Gagal", "Tautan/link produk wajib diisi untuk tipe File.", "error");
+    if (isFileLinkMode && !deliveryInfo.trim()) {
+      Swal.fire("Gagal", "Tautan/link produk wajib diisi untuk mode Link Eksternal.", "error");
+      return;
+    }
+    if (isFileUploadMode && !productDeliveryFile) {
+      Swal.fire("Gagal", "Pilih file produk yang mau diupload.", "error");
       return;
     }
 
@@ -294,6 +327,19 @@ export default function AdminDashboard() {
       }
     }
 
+    let finalDeliveryInfo: string | null = null;
+    if (isFileLinkMode) {
+      finalDeliveryInfo = deliveryInfo;
+    } else if (isFileUploadMode && productDeliveryFile) {
+      setUploadingDeliveryFile(true);
+      finalDeliveryInfo = await uploadProductDeliveryFile(productDeliveryFile);
+      setUploadingDeliveryFile(false);
+      if (!finalDeliveryInfo) {
+        setLoading(false);
+        return; // uploadProductDeliveryFile sudah menampilkan pesan error-nya
+      }
+    }
+
     const { error } = await supabase.from("products").insert([
       {
         title: productTitle,
@@ -301,7 +347,7 @@ export default function AdminDashboard() {
         price: isRedirectProduct ? 0 : parseInt(productPrice),
         category_id: productCategoryId || null,
         delivery_type: isRedirectProduct ? "account" : deliveryType,
-        delivery_info: !isRedirectProduct && deliveryType === "file" ? deliveryInfo : null,
+        delivery_info: finalDeliveryInfo,
         image_url: imageUrl,
         redirect_url: productRedirectUrl.trim() || null,
       },
@@ -316,6 +362,7 @@ export default function AdminDashboard() {
       setProductPrice("");
       setProductDescription("");
       setDeliveryInfo("");
+      setProductDeliveryFile(null);
       setProductImageFile(null);
       setProductRedirectUrl("");
       fetchProducts();
@@ -671,14 +718,45 @@ export default function AdminDashboard() {
 
                   {deliveryType === "file" && (
                     <div>
-                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Tautan / Link File Produk</label>
-                      <input
-                        type="url" required
-                        className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
-                        placeholder="https://drive.google.com/..."
-                        value={deliveryInfo}
-                        onChange={(e) => setDeliveryInfo(e.target.value)}
-                      />
+                      <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Cara Kirim File</label>
+                      <div className="flex gap-1 bg-muted rounded-full p-1 mb-3 w-fit">
+                        <button
+                          type="button"
+                          onClick={() => setFileDeliveryMode("upload")}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${fileDeliveryMode === "upload" ? "bg-purple-600 text-white" : "text-muted-foreground"}`}
+                        >
+                          Upload File
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFileDeliveryMode("link")}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${fileDeliveryMode === "link" ? "bg-purple-600 text-white" : "text-muted-foreground"}`}
+                        >
+                          Link Eksternal
+                        </button>
+                      </div>
+
+                      {fileDeliveryMode === "upload" ? (
+                        <>
+                          <input
+                            type="file"
+                            onChange={(e) => setProductDeliveryFile(e.target.files?.[0] || null)}
+                            className="w-full p-3 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-xs text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-purple-500/10 dark:file:bg-purple-500/20 file:text-purple-600 dark:file:text-purple-400 file:font-bold file:text-xs file:cursor-pointer cursor-pointer"
+                          />
+                          {productDeliveryFile && (
+                            <p className="text-[11px] text-muted-foreground mt-1">Terpilih: {productDeliveryFile.name}</p>
+                          )}
+                          <p className="text-[11px] text-muted-foreground mt-1">Maks. 50MB. File lebih besar, pakai Link Eksternal.</p>
+                        </>
+                      ) : (
+                        <input
+                          type="url" required
+                          className="w-full p-4 border border-border bg-muted rounded-2xl outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold text-foreground placeholder:text-muted-foreground"
+                          placeholder="https://drive.google.com/..."
+                          value={deliveryInfo}
+                          onChange={(e) => setDeliveryInfo(e.target.value)}
+                        />
+                      )}
                     </div>
                   )}
                 </>
@@ -718,7 +796,7 @@ export default function AdminDashboard() {
                 className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-purple-100 hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />}
-                {uploadingImage ? "Mengunggah foto..." : "Simpan Produk Baru"}
+                {uploadingImage ? "Mengunggah foto..." : uploadingDeliveryFile ? "Mengunggah file produk..." : "Simpan Produk Baru"}
               </button>
             </form>
 
