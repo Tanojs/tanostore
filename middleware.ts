@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const isAdminRoute = path.startsWith('/admin')
-  const isCheckoutRoute = path.startsWith('/checkout') || path === '/api/checkout'
+  const isCheckoutRoute = path.startsWith('/checkout') || path.startsWith('/api/checkout')
   const isOrderHistoryRoute = path.startsWith('/cek-order')
   const isProfileRoute = path.startsWith('/profile')
 
