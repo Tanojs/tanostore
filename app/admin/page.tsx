@@ -36,6 +36,7 @@ interface Product {
   price: number;
   category_id: string | null;
   delivery_type: string;
+  delivery_info: string | null;
   is_active: boolean;
   created_at: string;
   image_url: string | null;
@@ -141,7 +142,7 @@ export default function AdminDashboard() {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("products")
-      .select("id, title, price, category_id, delivery_type, is_active, created_at, image_url, redirect_url, categories(name)")
+      .select("id, title, price, category_id, delivery_type, delivery_info, is_active, created_at, image_url, redirect_url, categories(name)")
       .order("created_at", { ascending: false });
     if (!error && data) {
       setProducts(data as any);
@@ -271,10 +272,20 @@ export default function AdminDashboard() {
     }
   };
 
+  // Ambil path relatif dari URL publik Supabase Storage, biar bisa dipakai untuk hapus objeknya.
+  // Return null kalau URL bukan dari bucket yang dimaksud (mis. link Google Drive eksternal),
+  // supaya kita tidak salah coba hapus sesuatu yang bukan milik kita.
+  const extractStoragePath = (url: string, bucket: string): string | null => {
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    return url.slice(idx + marker.length);
+  };
+
   const handleDeleteProduct = async (id: string, title: string) => {
     const result = await Swal.fire({
       title: `Hapus produk "${title}"?`,
-      text: "Semua data stok produk ini akan ikut terhapus dan tidak bisa dikembalikan.",
+      text: "Semua data stok & file produk ini akan ikut terhapus dan tidak bisa dikembalikan.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Ya, Hapus",
@@ -283,6 +294,8 @@ export default function AdminDashboard() {
     });
     if (!result.isConfirmed) return;
 
+    const product = products.find((p) => p.id === id);
+
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) {
       Swal.fire(
@@ -290,11 +303,24 @@ export default function AdminDashboard() {
         "Produk ini kemungkinan sudah pernah ada yang beli (ada riwayat pesanan), jadi tidak bisa dihapus permanen. Nonaktifkan saja produknya lewat tombol ⏻ di sebelahnya.",
         "error"
       );
-    } else {
-      Swal.fire("Terhapus", "Produk berhasil dihapus.", "success");
-      fetchProducts();
-      fetchStockCounts();
+      return;
     }
+
+    // Bersihkan file terkait di storage (foto produk & file yang di-upload langsung).
+    // Kalau delivery_info-nya link eksternal (Google Drive dll), extractStoragePath akan
+    // return null dan otomatis dilewati (tidak dicoba dihapus).
+    if (product?.image_url) {
+      const path = extractStoragePath(product.image_url, "product-images");
+      if (path) await supabase.storage.from("product-images").remove([path]);
+    }
+    if (product?.delivery_info) {
+      const path = extractStoragePath(product.delivery_info, "product-files");
+      if (path) await supabase.storage.from("product-files").remove([path]);
+    }
+
+    Swal.fire("Terhapus", "Produk berhasil dihapus.", "success");
+    fetchProducts();
+    fetchStockCounts();
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
