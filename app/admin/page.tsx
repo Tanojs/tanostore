@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -17,6 +17,7 @@ import {
   Tags,
   Power,
   Image as ImageIcon,
+  Images,
   Upload,
   Trash2,
 } from "lucide-react";
@@ -94,6 +95,12 @@ export default function AdminDashboard() {
   // Untuk tombol "Ubah Foto" di tiap baris produk yang sudah ada
   const rowFileInputRef = useRef<HTMLInputElement>(null);
   const [targetProductId, setTargetProductId] = useState<string | null>(null);
+
+  // Kelola galeri foto tambahan per produk
+  const [galleryOpenFor, setGalleryOpenFor] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<{ id: number; image_url: string }[]>([]);
+  const [uploadingGalleryImage, setUploadingGalleryImage] = useState(false);
+  const galleryFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form States - Stok
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -176,6 +183,58 @@ export default function AdminDashboard() {
 
     const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
     return data.publicUrl;
+  };
+
+  // Buka/tutup panel galeri foto tambahan untuk sebuah produk
+  const toggleGallery = async (productId: string) => {
+    if (galleryOpenFor === productId) {
+      setGalleryOpenFor(null);
+      return;
+    }
+    setGalleryOpenFor(productId);
+    const { data } = await supabase
+      .from("product_images")
+      .select("id, image_url")
+      .eq("product_id", productId)
+      .order("sort_order", { ascending: true });
+    setGalleryImages(data || []);
+  };
+
+  const handleAddGalleryImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !galleryOpenFor) return;
+
+    setUploadingGalleryImage(true);
+    const imageUrl = await uploadProductImage(file);
+    setUploadingGalleryImage(false);
+    if (!imageUrl) return;
+
+    const { error } = await supabase.from("product_images").insert([
+      { product_id: galleryOpenFor, image_url: imageUrl, sort_order: galleryImages.length },
+    ]);
+
+    if (error) {
+      Swal.fire("Gagal", error.message, "error");
+    } else {
+      const { data } = await supabase
+        .from("product_images")
+        .select("id, image_url")
+        .eq("product_id", galleryOpenFor)
+        .order("sort_order", { ascending: true });
+      setGalleryImages(data || []);
+    }
+  };
+
+  const handleDeleteGalleryImage = async (imageId: number, imageUrl: string) => {
+    const { error } = await supabase.from("product_images").delete().eq("id", imageId);
+    if (error) {
+      Swal.fire("Gagal", error.message, "error");
+      return;
+    }
+    const path = extractStoragePath(imageUrl, "product-images");
+    if (path) await supabase.storage.from("product-images").remove([path]);
+    setGalleryImages((prev) => prev.filter((g) => g.id !== imageId));
   };
 
   // Upload file produk digital (bukan foto) ke bucket "product-files", dipakai
@@ -296,6 +355,14 @@ export default function AdminDashboard() {
 
     const product = products.find((p) => p.id === id);
 
+    // Ambil dulu daftar foto galeri SEBELUM produk dihapus — begitu produk dihapus,
+    // baris di tabel product_images ikut terhapus otomatis (cascade), jadi kalau
+    // tidak diambil sekarang datanya sudah tidak bisa diakses lagi.
+    const { data: galleryData } = await supabase
+      .from("product_images")
+      .select("image_url")
+      .eq("product_id", id);
+
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) {
       Swal.fire(
@@ -306,7 +373,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Bersihkan file terkait di storage (foto produk & file yang di-upload langsung).
+    // Bersihkan semua file terkait di storage (foto utama, file produk, & foto galeri).
     // Kalau delivery_info-nya link eksternal (Google Drive dll), extractStoragePath akan
     // return null dan otomatis dilewati (tidak dicoba dihapus).
     if (product?.image_url) {
@@ -316,6 +383,12 @@ export default function AdminDashboard() {
     if (product?.delivery_info) {
       const path = extractStoragePath(product.delivery_info, "product-files");
       if (path) await supabase.storage.from("product-files").remove([path]);
+    }
+    const galleryPaths = (galleryData || [])
+      .map((g) => extractStoragePath(g.image_url, "product-images"))
+      .filter((p): p is string => p !== null);
+    if (galleryPaths.length > 0) {
+      await supabase.storage.from("product-images").remove(galleryPaths);
     }
 
     Swal.fire("Terhapus", "Produk berhasil dihapus.", "success");
@@ -835,6 +908,14 @@ export default function AdminDashboard() {
                 onChange={handleRowImageChange}
                 className="hidden"
               />
+              {/* Input file tersembunyi untuk tambah foto galeri */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={galleryFileInputRef}
+                onChange={handleAddGalleryImage}
+                className="hidden"
+              />
               <div className="min-w-[700px] w-full">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -857,7 +938,8 @@ export default function AdminDashboard() {
                       products.map((p) => {
                         const stock = stockByProduct[p.id];
                         return (
-                          <tr key={p.id} className="hover:bg-muted/50 transition-colors">
+                          <React.Fragment key={p.id}>
+                          <tr className="hover:bg-muted/50 transition-colors">
                             <td className="p-4 pl-6">
                               {p.image_url ? (
                                 <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-xl object-cover border border-border" />
@@ -892,6 +974,13 @@ export default function AdminDashboard() {
                             </td>
                             <td className="p-4 pr-6 flex justify-center gap-2">
                               <button
+                                onClick={() => toggleGallery(p.id)}
+                                className="bg-purple-500/10 text-purple-600 dark:text-purple-400 p-2 rounded-xl hover:bg-purple-500/20 transition-colors cursor-pointer"
+                                title="Kelola Galeri Foto"
+                              >
+                                <Images size={16} />
+                              </button>
+                              <button
                                 onClick={() => triggerRowImageUpload(p.id)}
                                 disabled={uploadingImage}
                                 className="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50"
@@ -915,6 +1004,41 @@ export default function AdminDashboard() {
                               </button>
                             </td>
                           </tr>
+                          {galleryOpenFor === p.id && (
+                            <tr>
+                              <td colSpan={7} className="p-4 bg-muted/30 border-t border-border">
+                                <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
+                                  Galeri Foto Tambahan — {p.title}
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                  {galleryImages.map((img) => (
+                                    <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border group/thumb">
+                                      <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                                      <button
+                                        onClick={() => handleDeleteGalleryImage(img.id, img.image_url)}
+                                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity cursor-pointer"
+                                        title="Hapus foto ini"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button
+                                    onClick={() => galleryFileInputRef.current?.click()}
+                                    disabled={uploadingGalleryImage}
+                                    className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-purple-500 hover:text-purple-500 transition-colors cursor-pointer disabled:opacity-50"
+                                    title="Tambah foto"
+                                  >
+                                    {uploadingGalleryImage ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />}
+                                  </button>
+                                </div>
+                                {galleryImages.length === 0 && (
+                                  <p className="text-xs text-muted-foreground mt-2">Belum ada foto tambahan. Produk tetap bisa ditampilkan tanpa foto galeri.</p>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })
                     )}
