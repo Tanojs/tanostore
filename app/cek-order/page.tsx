@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, Package, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Loader2, Package, CheckCircle2, Clock, XCircle, QrCode } from "lucide-react";
 
 const supabase = createClient();
 
@@ -105,6 +106,16 @@ export default function CekOrderPage() {
                       <p className="font-sans font-bold text-muted-foreground mb-1">🎁 Data Pesanan Anda:</p>
                       {o.account_data || "Data sedang disiapkan..."}
                     </div>
+                  )}
+
+                  {o.status === "pending" && (
+                    <Link
+                      href={`/checkout?resume=${o.id}`}
+                      className="mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] text-white text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-all"
+                    >
+                      <QrCode size={16} />
+                      Lanjutkan Pembayaran
+                    </Link>
                   )}
                 </div>
               );
