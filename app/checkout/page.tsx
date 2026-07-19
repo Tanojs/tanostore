@@ -25,6 +25,7 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get("id") || "";
+  const resumeOrderId = searchParams.get("resume") || "";
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loadingProduct, setLoadingProduct] = useState(true);
@@ -33,9 +34,50 @@ function CheckoutContent() {
   const [whatsappNumber, setWhatsappNumber] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [qrString, setQrString] = useState<string>("");
+  const [qrTotal, setQrTotal] = useState<number>(0);
   const [orderId, setOrderId] = useState<string | null>(null);
 
+  // Mode "lanjutkan pembayaran": order sudah ada (dari riwayat pesanan), tinggal
+  // minta ulang QRIS-nya ke Pakasir, tanpa perlu isi form dari awal lagi.
+  const [resuming, setResuming] = useState<boolean>(!!resumeOrderId);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+
   useEffect(() => {
+    if (!resumeOrderId) return;
+
+    async function resumePayment() {
+      try {
+        const res = await fetch("/api/checkout/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: resumeOrderId }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          setQrString(data.qrString);
+          setQrTotal(Number(data.total_price));
+          setOrderId(data.order_id);
+        } else {
+          setResumeError(data.error || "Gagal memuat ulang pembayaran");
+        }
+      } catch (err: any) {
+        setResumeError("Terjadi kesalahan: " + err.message);
+      } finally {
+        setResuming(false);
+      }
+    }
+
+    resumePayment();
+  }, [resumeOrderId]);
+
+  useEffect(() => {
+    if (resumeOrderId) {
+      // Mode resume tidak perlu fetch data produk, cukup nunggu QR dari resumePayment().
+      setLoadingProduct(false);
+      return;
+    }
+
     async function fetchProduct() {
       if (!productId) {
         setLoadingProduct(false);
@@ -61,7 +103,7 @@ function CheckoutContent() {
     }
 
     fetchProduct();
-  }, [productId]);
+  }, [productId, resumeOrderId]);
 
   useEffect(() => {
     if (!orderId) return;
@@ -123,6 +165,7 @@ function CheckoutContent() {
 
       if (data.success) {
         setQrString(data.qrString);
+        setQrTotal(product.price * quantity);
         setOrderId(data.order_id);
       } else {
         alert(data.error || "Gagal memproses pembayaran");
@@ -133,6 +176,53 @@ function CheckoutContent() {
       setLoading(false);
     }
   };
+
+  if (resuming) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center text-muted-foreground">Memuat ulang kode pembayaran...</div>
+      </div>
+    );
+  }
+
+  if (resumeError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-card border border-border p-8 rounded-3xl shadow-xl text-center max-w-sm w-full">
+          <h2 className="font-bold text-xl text-red-600 dark:text-red-400">Gagal Memuat Pembayaran</h2>
+          <p className="text-muted-foreground text-sm mt-2">{resumeError}</p>
+          <Link href="/cek-order" className="mt-4 inline-block text-purple-600 dark:text-purple-400 font-bold text-sm">
+            ← Kembali ke Riwayat Pesanan
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (qrString) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-card border border-border p-8 rounded-3xl shadow-xl text-center w-full max-w-sm">
+          <h2 className="font-bold text-xl mb-4 text-foreground">Scan QRIS</h2>
+          <div className="border-2 border-dashed border-border p-4 rounded-2xl mb-4 bg-white">
+            <div className="w-full max-w-[200px] aspect-square mx-auto">
+              <QRCodeSVG value={qrString} size={200} className="w-full h-full" />
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">Menunggu pembayaran...</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Total: Rp {qrTotal.toLocaleString("id-ID")}
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="mt-6 text-purple-600 dark:text-purple-400 font-bold text-sm cursor-pointer"
+          >
+            ← Kembali ke Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loadingProduct) {
     return (
@@ -158,29 +248,6 @@ function CheckoutContent() {
 
   const isOutOfStock = product.delivery_type === "account" && (product.stock ?? 0) <= 0;
   const maxQty = product.delivery_type === "account" ? Math.min(product.stock ?? 0, MAX_QTY) : MAX_QTY;
-
-  if (qrString) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="bg-card border border-border p-8 rounded-3xl shadow-xl text-center w-full max-w-sm">
-          <h2 className="font-bold text-xl mb-4 text-foreground">Scan QRIS</h2>
-          <div className="border-2 border-dashed border-border p-4 rounded-2xl mb-4 bg-white flex justify-center">
-            <QRCodeSVG value={qrString} size={220} className="w-full h-auto max-w-[200px] block" />
-          </div>
-          <p className="text-sm text-muted-foreground">Menunggu pembayaran...</p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Total: Rp {(product.price * quantity).toLocaleString("id-ID")}
-          </p>
-          <button
-            onClick={() => router.push("/")}
-            className="mt-6 text-purple-600 dark:text-purple-400 font-bold text-sm cursor-pointer"
-          >
-            ← Kembali ke Home
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background py-6 px-4">
