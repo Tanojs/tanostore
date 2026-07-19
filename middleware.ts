@@ -36,9 +36,10 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = path.startsWith('/admin')
   const isCheckoutRoute = path.startsWith('/checkout') || path === '/api/checkout'
   const isOrderHistoryRoute = path.startsWith('/cek-order')
+  const isProfileRoute = path.startsWith('/profile')
 
-  // Belum login tapi mencoba akses halaman yang wajib login (beli, riwayat pesanan, admin)
-  if (!user && (isAdminRoute || isCheckoutRoute || isOrderHistoryRoute)) {
+  // Belum login tapi mencoba akses halaman yang wajib login (beli, riwayat pesanan, admin, profil)
+  if (!user && (isAdminRoute || isCheckoutRoute || isOrderHistoryRoute || isProfileRoute)) {
     // Untuk API route, balas 401 JSON, bukan redirect (redirect tidak berguna untuk fetch())
     if (path.startsWith('/api/')) {
       return NextResponse.json(
@@ -72,5 +73,5 @@ export async function middleware(request: NextRequest) {
 
 // Menentukan rute mana saja yang akan diproses oleh middleware ini
 export const config = {
-  matcher: ['/checkout/:path*', '/admin/:path*', '/api/checkout/:path*', '/cek-order/:path*'],
+  matcher: ['/checkout/:path*', '/admin/:path*', '/api/checkout/:path*', '/cek-order/:path*', '/profile/:path*'],
 }
