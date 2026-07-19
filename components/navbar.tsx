@@ -100,7 +100,7 @@ export function Navbar() {
               />
             </div>
             <span className="font-extrabold text-foreground text-base sm:text-lg tracking-tight">
-              Tano<span className="bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] bg-clip-text text-transparent">Pedia</span>
+              Tano<span className="bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] bg-clip-text text-transparent"> Store</span>
             </span>
           </Link>
 
