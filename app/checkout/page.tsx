@@ -36,6 +36,7 @@ function CheckoutContent() {
   const [qrString, setQrString] = useState<string>("");
   const [qrTotal, setQrTotal] = useState<number>(0);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState<"expired" | "cancelled" | null>(null);
 
   // Mode "lanjutkan pembayaran": order sudah ada (dari riwayat pesanan), tinggal
   // minta ulang QRIS-nya ke Pakasir, tanpa perlu isi form dari awal lagi.
@@ -109,6 +110,10 @@ function CheckoutContent() {
     if (!orderId) return;
 
     const interval = setInterval(async () => {
+      // Cek dulu apakah order ini sudah lewat batas waktu pembayaran (10 menit),
+      // kalau iya otomatis ditandai 'expired' oleh fungsi ini.
+      await supabase.rpc('expire_order_if_stale', { p_order_id: orderId });
+
       const { data } = await supabase
         .from('orders')
         .select('status')
@@ -117,11 +122,23 @@ function CheckoutContent() {
 
       if (data?.status === 'paid') {
         router.push(`/success?order_id=${orderId}`);
+      } else if (data?.status === 'expired' || data?.status === 'cancelled') {
+        setOrderStatus(data.status);
       }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [orderId, router]);
+
+  const handleCancelOrder = async () => {
+    if (!orderId) return;
+    if (!confirm("Batalkan pesanan ini?")) return;
+
+    const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+    if (!error) {
+      setOrderStatus('cancelled');
+    }
+  };
 
   const handleCheckout = async () => {
     if (!customerName.trim()) {
@@ -200,6 +217,26 @@ function CheckoutContent() {
   }
 
   if (qrString) {
+    if (orderStatus === "expired" || orderStatus === "cancelled") {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="bg-card border border-border p-8 rounded-3xl shadow-xl text-center w-full max-w-sm">
+            <h2 className="font-bold text-xl text-red-600 dark:text-red-400">
+              {orderStatus === "expired" ? "Waktu Pembayaran Habis" : "Pesanan Dibatalkan"}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              {orderStatus === "expired"
+                ? "Pesanan ini otomatis dibatalkan karena melebihi batas waktu pembayaran (10 menit)."
+                : "Kamu sudah membatalkan pesanan ini."}
+            </p>
+            <Link href="/" className="mt-6 inline-block text-purple-600 dark:text-purple-400 font-bold text-sm">
+              ← Kembali ke Home
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="bg-card border border-border p-8 rounded-3xl shadow-xl text-center w-full max-w-sm">
@@ -213,9 +250,18 @@ function CheckoutContent() {
           <p className="text-xs text-muted-foreground mt-2">
             Total: Rp {qrTotal.toLocaleString("id-ID")}
           </p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Bayar dalam 10 menit, atau pesanan otomatis dibatalkan.
+          </p>
+          <button
+            onClick={handleCancelOrder}
+            className="mt-4 text-red-500 dark:text-red-400 font-bold text-xs cursor-pointer block mx-auto"
+          >
+            Batalkan Pesanan
+          </button>
           <button
             onClick={() => router.push("/")}
-            className="mt-6 text-purple-600 dark:text-purple-400 font-bold text-sm cursor-pointer"
+            className="mt-3 text-purple-600 dark:text-purple-400 font-bold text-sm cursor-pointer"
           >
             ← Kembali ke Home
           </button>
