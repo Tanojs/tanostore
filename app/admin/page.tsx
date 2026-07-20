@@ -20,6 +20,7 @@ import {
   Images,
   Upload,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -34,6 +35,7 @@ interface Category {
 interface Product {
   id: string;
   title: string;
+  description: string | null;
   price: number;
   category_id: string | null;
   delivery_type: string;
@@ -89,6 +91,11 @@ export default function AdminDashboard() {
   const [productDeliveryFile, setProductDeliveryFile] = useState<File | null>(null);
   const [uploadingDeliveryFile, setUploadingDeliveryFile] = useState(false);
   const [productRedirectUrl, setProductRedirectUrl] = useState("");
+
+  // Mode edit produk yang sudah ada
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
+  const [editingDeliveryInfo, setEditingDeliveryInfo] = useState<string | null>(null);
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -149,7 +156,7 @@ export default function AdminDashboard() {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("products")
-      .select("id, title, price, category_id, delivery_type, delivery_info, is_active, created_at, image_url, redirect_url, categories(name)")
+      .select("id, title, description, price, category_id, delivery_type, delivery_info, is_active, created_at, image_url, redirect_url, categories(name)")
       .order("created_at", { ascending: false });
     if (!error && data) {
       setProducts(data as any);
@@ -396,8 +403,60 @@ export default function AdminDashboard() {
     fetchStockCounts();
   };
 
+  const resetProductForm = () => {
+    setProductTitle("");
+    setProductPrice("");
+    setProductDescription("");
+    setProductCategoryId("");
+    setDeliveryType("account");
+    setDeliveryInfo("");
+    setFileDeliveryMode("upload");
+    setProductDeliveryFile(null);
+    setProductImageFile(null);
+    setProductRedirectUrl("");
+    setEditingProductId(null);
+    setEditingImageUrl(null);
+    setEditingDeliveryInfo(null);
+  };
+
+  // Buka form dalam mode edit, isi otomatis dengan data produk yang dipilih.
+  // Bisa dipakai untuk SEMUA produk, termasuk yang sudah pernah dibeli — yang
+  // dibatasi cuma hapus produk, bukan edit.
+  const startEditProduct = (p: Product) => {
+    setEditingProductId(p.id);
+    setEditingImageUrl(p.image_url);
+    setProductTitle(p.title);
+    setProductPrice(String(p.price));
+    setProductDescription(p.description || "");
+    setProductCategoryId(p.category_id || "");
+    setProductRedirectUrl(p.redirect_url || "");
+    setProductImageFile(null);
+    setProductDeliveryFile(null);
+
+    if (p.redirect_url) {
+      setDeliveryType("account");
+      setDeliveryInfo("");
+      setFileDeliveryMode("upload");
+      setEditingDeliveryInfo(null);
+    } else {
+      setDeliveryType(p.delivery_type);
+      if (p.delivery_type === "file") {
+        const isUploaded = p.delivery_info ? extractStoragePath(p.delivery_info, "product-files") !== null : false;
+        setFileDeliveryMode(isUploaded ? "upload" : "link");
+        setDeliveryInfo(isUploaded ? "" : p.delivery_info || "");
+        setEditingDeliveryInfo(isUploaded ? p.delivery_info : null);
+      } else {
+        setDeliveryInfo("");
+        setEditingDeliveryInfo(null);
+      }
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isEditMode = !!editingProductId;
     const isRedirectProduct = !!productRedirectUrl.trim();
     const isFileUploadMode = !isRedirectProduct && deliveryType === "file" && fileDeliveryMode === "upload";
     const isFileLinkMode = !isRedirectProduct && deliveryType === "file" && fileDeliveryMode === "link";
@@ -408,62 +467,64 @@ export default function AdminDashboard() {
       Swal.fire("Gagal", "Tautan/link produk wajib diisi untuk mode Link Eksternal.", "error");
       return;
     }
-    if (isFileUploadMode && !productDeliveryFile) {
+    if (isFileUploadMode && !productDeliveryFile && !(isEditMode && editingDeliveryInfo)) {
       Swal.fire("Gagal", "Pilih file produk yang mau diupload.", "error");
       return;
     }
 
     setLoading(true);
 
-    let imageUrl: string | null = null;
+    let imageUrl: string | null = isEditMode ? editingImageUrl : null;
     if (productImageFile) {
       setUploadingImage(true);
-      imageUrl = await uploadProductImage(productImageFile);
+      const uploaded = await uploadProductImage(productImageFile);
       setUploadingImage(false);
-      if (!imageUrl) {
+      if (!uploaded) {
         setLoading(false);
         return; // uploadProductImage sudah menampilkan pesan error-nya
       }
+      imageUrl = uploaded;
     }
 
     let finalDeliveryInfo: string | null = null;
     if (isFileLinkMode) {
       finalDeliveryInfo = deliveryInfo;
-    } else if (isFileUploadMode && productDeliveryFile) {
-      setUploadingDeliveryFile(true);
-      finalDeliveryInfo = await uploadProductDeliveryFile(productDeliveryFile);
-      setUploadingDeliveryFile(false);
-      if (!finalDeliveryInfo) {
-        setLoading(false);
-        return; // uploadProductDeliveryFile sudah menampilkan pesan error-nya
+    } else if (isFileUploadMode) {
+      if (productDeliveryFile) {
+        setUploadingDeliveryFile(true);
+        const uploaded = await uploadProductDeliveryFile(productDeliveryFile);
+        setUploadingDeliveryFile(false);
+        if (!uploaded) {
+          setLoading(false);
+          return; // uploadProductDeliveryFile sudah menampilkan pesan error-nya
+        }
+        finalDeliveryInfo = uploaded;
+      } else if (isEditMode) {
+        finalDeliveryInfo = editingDeliveryInfo; // file lama tidak diganti
       }
     }
 
-    const { error } = await supabase.from("products").insert([
-      {
-        title: productTitle,
-        description: productDescription || null,
-        price: isRedirectProduct ? 0 : parseInt(productPrice),
-        category_id: productCategoryId || null,
-        delivery_type: isRedirectProduct ? "account" : deliveryType,
-        delivery_info: finalDeliveryInfo,
-        image_url: imageUrl,
-        redirect_url: productRedirectUrl.trim() || null,
-      },
-    ]);
+    const payload = {
+      title: productTitle,
+      description: productDescription || null,
+      price: isRedirectProduct ? 0 : parseInt(productPrice),
+      category_id: productCategoryId || null,
+      delivery_type: isRedirectProduct ? "account" : deliveryType,
+      delivery_info: finalDeliveryInfo,
+      image_url: imageUrl,
+      redirect_url: productRedirectUrl.trim() || null,
+    };
+
+    const { error } = isEditMode
+      ? await supabase.from("products").update(payload).eq("id", editingProductId)
+      : await supabase.from("products").insert([payload]);
 
     setLoading(false);
     if (error) {
       Swal.fire("Gagal", error.message, "error");
     } else {
-      Swal.fire("Sukses", "Produk baru berhasil ditambahkan!", "success");
-      setProductTitle("");
-      setProductPrice("");
-      setProductDescription("");
-      setDeliveryInfo("");
-      setProductDeliveryFile(null);
-      setProductImageFile(null);
-      setProductRedirectUrl("");
+      Swal.fire("Sukses", isEditMode ? "Perubahan produk berhasil disimpan!" : "Produk baru berhasil ditambahkan!", "success");
+      resetProductForm();
       fetchProducts();
     }
   };
@@ -734,8 +795,23 @@ export default function AdminDashboard() {
         {/* TAB 3: PRODUK */}
         {activeTab === "products" && (
           <div className="max-w-3xl mx-auto md:mx-0">
-            <h1 className="text-xl sm:text-2xl font-black text-foreground mb-2">Kelola Produk 📦</h1>
-            <p className="text-sm text-muted-foreground mb-6">Tambah produk baru dan pantau status/stoknya di bawah.</p>
+            <div className="flex items-center justify-between mb-2 gap-3">
+              <h1 className="text-xl sm:text-2xl font-black text-foreground">
+                {editingProductId ? "Edit Produk ✏️" : "Kelola Produk 📦"}
+              </h1>
+              {editingProductId && (
+                <button
+                  type="button"
+                  onClick={resetProductForm}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+                >
+                  Batal Edit
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              {editingProductId ? "Ubah data produk, lalu simpan perubahan." : "Tambah produk baru dan pantau status/stoknya di bawah."}
+            </p>
 
             <form onSubmit={handleAddProduct} className="bg-card border border-border p-5 sm:p-8 rounded-3xl shadow-sm space-y-4 mb-8">
               <div>
@@ -837,6 +913,9 @@ export default function AdminDashboard() {
 
                       {fileDeliveryMode === "upload" ? (
                         <>
+                          {editingProductId && editingDeliveryInfo && !productDeliveryFile && (
+                            <p className="text-[11px] text-green-600 dark:text-green-400 mb-2">✓ Sudah ada file terupload — pilih file baru untuk mengganti</p>
+                          )}
                           <input
                             type="file"
                             onChange={(e) => setProductDeliveryFile(e.target.files?.[0] || null)}
@@ -879,6 +958,12 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Foto Produk (opsional)</label>
+                {editingProductId && editingImageUrl && !productImageFile && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <img src={editingImageUrl} alt="Foto saat ini" className="w-12 h-12 rounded-xl object-cover border border-border" />
+                    <span className="text-[11px] text-muted-foreground">Foto saat ini — pilih file baru untuk mengganti</span>
+                  </div>
+                )}
                 <input
                   type="file"
                   accept="image/*"
@@ -895,7 +980,13 @@ export default function AdminDashboard() {
                 className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-purple-100 hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />}
-                {uploadingImage ? "Mengunggah foto..." : uploadingDeliveryFile ? "Mengunggah file produk..." : "Simpan Produk Baru"}
+                {uploadingImage
+                  ? "Mengunggah foto..."
+                  : uploadingDeliveryFile
+                  ? "Mengunggah file produk..."
+                  : editingProductId
+                  ? "Simpan Perubahan"
+                  : "Simpan Produk Baru"}
               </button>
             </form>
 
@@ -973,6 +1064,13 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td className="p-4 pr-6 flex justify-center gap-2">
+                              <button
+                                onClick={() => startEditProduct(p)}
+                                className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2 rounded-xl hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                title="Edit Produk"
+                              >
+                                <Pencil size={16} />
+                              </button>
                               <button
                                 onClick={() => toggleGallery(p.id)}
                                 className="bg-purple-500/10 text-purple-600 dark:text-purple-400 p-2 rounded-xl hover:bg-purple-500/20 transition-colors cursor-pointer"
