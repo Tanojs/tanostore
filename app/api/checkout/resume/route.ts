@@ -23,6 +23,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "order_id tidak valid" }, { status: 400 });
     }
 
+    // Pastikan status-nya akurat dulu — kalau sudah lewat 10 menit sejak dibuat,
+    // tandai expired sebelum lanjut (mencegah generate QR baru untuk order basi).
+    await supabase.rpc("expire_order_if_stale", { p_order_id: orderId });
+
     // RLS memastikan user cuma bisa ambil order miliknya sendiri.
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
@@ -36,7 +40,12 @@ export async function POST(request: Request) {
 
     if (orderData.status !== "pending") {
       return NextResponse.json(
-        { error: "Pesanan ini sudah tidak berstatus pending, tidak bisa dibayar ulang." },
+        {
+          error:
+            orderData.status === "expired"
+              ? "Pesanan ini sudah kedaluwarsa (melebihi batas waktu 10 menit). Silakan buat pesanan baru."
+              : "Pesanan ini sudah tidak berstatus pending, tidak bisa dibayar ulang.",
+        },
         { status: 409 }
       );
     }
