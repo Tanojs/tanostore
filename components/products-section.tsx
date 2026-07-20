@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Server } from "lucide-react";
+import { Server, Search } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 
@@ -53,6 +53,7 @@ export function ProductsSection() {
   const [activeCategory, setActiveCategory] = useState<string>("semua");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function fetchData() {
@@ -78,8 +79,9 @@ export function ProductsSection() {
   }, []);
 
   const filteredProducts = products.filter((product) => {
-    if (activeCategory === "semua") return true;
-    return product.category_id === activeCategory;
+    if (activeCategory !== "semua" && product.category_id !== activeCategory) return false;
+    if (searchQuery.trim() && !product.title.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
+    return true;
   });
 
   const activeCategoryLabel =
@@ -101,6 +103,17 @@ export function ProductsSection() {
   return (
     <section id="products" className="py-8 bg-background text-foreground px-3 sm:px-6 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
+
+        <div className="relative max-w-md mx-auto mb-4">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari layanan (cth: Spotify)..."
+            className="w-full pl-11 pr-4 py-3 rounded-2xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
 
         <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar justify-center">
           <button
