@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, Package, CheckCircle2, Clock, XCircle, QrCode } from "lucide-react";
+import { Loader2, Package, CheckCircle2, Clock, XCircle, QrCode, Search, Ban } from "lucide-react";
 
 const supabase = createClient();
 
@@ -21,9 +21,14 @@ interface OrderRow {
 export default function CekOrderPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function fetchMyOrders() {
+      // Cek dulu apakah ada order pending milik user yang sudah lewat batas
+      // waktu pembayaran (10 menit) — kalau ada, otomatis ditandai 'expired'.
+      await supabase.rpc("expire_all_stale_orders");
+
       // RLS hanya mengizinkan user melihat order miliknya sendiri (auth.uid() = user_id),
       // jadi query ini otomatis aman tanpa perlu parameter tambahan.
       const { data, error } = await supabase
@@ -36,6 +41,24 @@ export default function CekOrderPage() {
     }
     fetchMyOrders();
   }, []);
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm("Batalkan pesanan ini?")) return;
+    const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", orderId);
+    if (!error) {
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: "cancelled" } : o)));
+    }
+  };
+
+  const filteredOrders = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return orders;
+    return orders.filter((o) => {
+      const invoice = `tano-${o.order_seq}`.toLowerCase();
+      const title = (o.products?.title || "").toLowerCase();
+      return invoice.includes(q) || String(o.order_seq).includes(q) || title.includes(q);
+    });
+  }, [orders, searchQuery]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -51,6 +74,12 @@ export default function CekOrderPage() {
           icon: <Clock size={12} />,
           label: "Menunggu Pembayaran",
         };
+      case "cancelled":
+        return {
+          className: "bg-muted text-muted-foreground border border-border",
+          icon: <Ban size={12} />,
+          label: "Dibatalkan",
+        };
       default:
         return {
           className: "bg-muted text-muted-foreground border border-border",
@@ -65,6 +94,19 @@ export default function CekOrderPage() {
       <div className="max-w-md mx-auto">
         <h2 className="text-2xl font-bold text-foreground mb-6 text-center">Riwayat Pesanan Saya 🧾</h2>
 
+        {!loading && orders.length > 0 && (
+          <div className="relative mb-6">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari invoice atau nama produk..."
+              className="w-full pl-11 pr-4 py-3 rounded-2xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+        )}
+
         <div className="space-y-4">
           {loading ? (
             <div className="text-center text-muted-foreground flex items-center justify-center gap-2">
@@ -72,8 +114,10 @@ export default function CekOrderPage() {
             </div>
           ) : orders.length === 0 ? (
             <p className="text-center text-muted-foreground">Anda belum pernah melakukan pemesanan.</p>
+          ) : filteredOrders.length === 0 ? (
+            <p className="text-center text-muted-foreground">Tidak ada pesanan yang cocok dengan pencarian.</p>
           ) : (
-            orders.map((o) => {
+            filteredOrders.map((o) => {
               const badge = getStatusBadge(o.status);
               return (
                 <div key={o.id} className="bg-card p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow">
@@ -109,13 +153,21 @@ export default function CekOrderPage() {
                   )}
 
                   {o.status === "pending" && (
-                    <Link
-                      href={`/checkout?resume=${o.id}`}
-                      className="mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] text-white text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-all"
-                    >
-                      <QrCode size={16} />
-                      Lanjutkan Pembayaran
-                    </Link>
+                    <div className="mt-4 flex gap-2">
+                      <Link
+                        href={`/checkout?resume=${o.id}`}
+                        className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] text-white text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-all"
+                      >
+                        <QrCode size={16} />
+                        Lanjutkan
+                      </Link>
+                      <button
+                        onClick={() => handleCancelOrder(o.id)}
+                        className="px-4 flex items-center justify-center gap-2 bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-all cursor-pointer"
+                      >
+                        <Ban size={16} />
+                      </button>
+                    </div>
                   )}
                 </div>
               );
