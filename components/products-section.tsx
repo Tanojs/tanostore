@@ -115,7 +115,7 @@ export function ProductsSection() {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar justify-center">
+        <div className="flex flex-nowrap gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar justify-start md:flex-wrap md:justify-center">
           <button
             onClick={() => setActiveCategory("semua")}
             className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer ${
