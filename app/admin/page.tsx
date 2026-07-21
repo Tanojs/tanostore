@@ -659,65 +659,113 @@ export default function AdminDashboard() {
         {activeTab === "orders" && (
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-foreground mb-6">Pantau Transaksi Masuk 🛒</h1>
-            <div className="bg-card border border-border rounded-3xl shadow-sm overflow-x-auto">
-              <div className="min-w-[700px] w-full">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
-                      <th className="p-4 pl-6">ID Pesanan</th>
-                      <th className="p-4">Produk</th>
-                      <th className="p-4">WhatsApp</th>
-                      <th className="p-4">Total Harga</th>
-                      <th className="p-4">Status</th>
-                      <th className="p-4 pr-6 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm text-foreground divide-y divide-border">
-                    {orders.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">Belum ada pesanan masuk.</td>
+            <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
+              {/* Tampilan kartu untuk mobile */}
+              <div className="md:hidden divide-y divide-border">
+                {orders.length === 0 ? (
+                  <p className="p-8 text-center text-muted-foreground font-medium text-sm">Belum ada pesanan masuk.</p>
+                ) : (
+                  orders.map((order) => (
+                    <div key={order.id} className="p-4 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-mono font-bold text-xs text-muted-foreground">TANO-{order.order_seq}</span>
+                        <span
+                          className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${
+                            order.status === "paid"
+                              ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                              : order.status === "pending"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {order.status === "paid" ? "Lunas" : order.status === "pending" ? "Pending" : order.status}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-foreground text-sm">{order.products?.title || "-"}</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{order.whatsapp}</span>
+                        <span className="font-bold text-purple-600">Rp {Number(order.total_price).toLocaleString("id-ID")}</span>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "paid")}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-green-500/10 text-green-600 dark:text-green-400 py-2 rounded-xl text-xs font-bold hover:bg-green-500/20 transition-colors cursor-pointer"
+                        >
+                          <CheckCircle size={14} /> Lunas
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "expired")}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-red-500/10 text-red-600 dark:text-red-400 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors cursor-pointer"
+                        >
+                          <XCircle size={14} /> Batalkan
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Tampilan tabel untuk desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <div className="min-w-[700px] w-full">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
+                        <th className="p-4 pl-6">ID Pesanan</th>
+                        <th className="p-4">Produk</th>
+                        <th className="p-4">WhatsApp</th>
+                        <th className="p-4">Total Harga</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 pr-6 text-center">Aksi</th>
                       </tr>
-                    ) : (
-                      orders.map((order) => (
-                        <tr key={order.id} className="hover:bg-muted/50 transition-colors">
-                          <td className="p-4 pl-6 font-mono font-bold text-xs text-muted-foreground">TANO-{order.order_seq}</td>
-                          <td className="p-4 font-semibold text-foreground">{order.products?.title || "-"}</td>
-                          <td className="p-4 font-semibold text-foreground">{order.whatsapp}</td>
-                          <td className="p-4 font-bold text-purple-600">Rp {Number(order.total_price).toLocaleString("id-ID")}</td>
-                          <td className="p-4">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                order.status === "paid"
-                                  ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                                  : order.status === "pending"
-                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {order.status === "paid" ? "Lunas" : order.status === "pending" ? "Pending" : order.status}
-                            </span>
-                          </td>
-                          <td className="p-4 pr-6 flex justify-center gap-2">
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, "paid")}
-                              className="bg-green-500/10 text-green-600 dark:text-green-400 p-2 rounded-xl hover:bg-green-500/20 transition-colors cursor-pointer"
-                              title="Tandai Lunas"
-                            >
-                              <CheckCircle size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, "expired")}
-                              className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
-                              title="Batalkan"
-                            >
-                              <XCircle size={16} />
-                            </button>
-                          </td>
+                    </thead>
+                    <tbody className="text-sm text-foreground divide-y divide-border">
+                      {orders.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">Belum ada pesanan masuk.</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        orders.map((order) => (
+                          <tr key={order.id} className="hover:bg-muted/50 transition-colors">
+                            <td className="p-4 pl-6 font-mono font-bold text-xs text-muted-foreground">TANO-{order.order_seq}</td>
+                            <td className="p-4 font-semibold text-foreground">{order.products?.title || "-"}</td>
+                            <td className="p-4 font-semibold text-foreground">{order.whatsapp}</td>
+                            <td className="p-4 font-bold text-purple-600">Rp {Number(order.total_price).toLocaleString("id-ID")}</td>
+                            <td className="p-4">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                  order.status === "paid"
+                                    ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                                    : order.status === "pending"
+                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                    : "bg-muted text-muted-foreground"
+                                }`}
+                              >
+                                {order.status === "paid" ? "Lunas" : order.status === "pending" ? "Pending" : order.status}
+                              </span>
+                            </td>
+                            <td className="p-4 pr-6 flex justify-center gap-2">
+                              <button
+                                onClick={() => handleUpdateStatus(order.id, "paid")}
+                                className="bg-green-500/10 text-green-600 dark:text-green-400 p-2 rounded-xl hover:bg-green-500/20 transition-colors cursor-pointer"
+                                title="Tandai Lunas"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(order.id, "expired")}
+                                className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
+                                title="Batalkan"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
@@ -752,42 +800,71 @@ export default function AdminDashboard() {
             </form>
 
             <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
-                    <th className="p-4 pl-6">Nama</th>
-                    <th className="p-4 pr-6">Slug</th>
-                    <th className="p-4 pr-6 text-right">Jumlah Produk</th>
-                    <th className="p-4 pr-6 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm text-foreground divide-y divide-border">
-                  {categories.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-muted-foreground font-medium">Belum ada kategori.</td>
+              {/* Tampilan kartu untuk mobile */}
+              <div className="md:hidden divide-y divide-border">
+                {categories.length === 0 ? (
+                  <p className="p-8 text-center text-muted-foreground font-medium text-sm">Belum ada kategori.</p>
+                ) : (
+                  categories.map((cat) => (
+                    <div key={cat.id} className="p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground text-sm truncate">{cat.name}</p>
+                        <p className="text-muted-foreground font-mono text-xs truncate">{cat.slug}</p>
+                        <p className="text-purple-600 font-bold text-xs mt-1">
+                          {products.filter((p) => p.category_id === cat.id).length} produk
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                        className="shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
+                        title="Hapus Kategori"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Tampilan tabel untuk desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
+                      <th className="p-4 pl-6">Nama</th>
+                      <th className="p-4 pr-6">Slug</th>
+                      <th className="p-4 pr-6 text-right">Jumlah Produk</th>
+                      <th className="p-4 pr-6 text-center">Aksi</th>
                     </tr>
-                  ) : (
-                    categories.map((cat) => (
-                      <tr key={cat.id}>
-                        <td className="p-4 pl-6 font-semibold text-foreground">{cat.name}</td>
-                        <td className="p-4 pr-6 text-muted-foreground font-mono text-xs">{cat.slug}</td>
-                        <td className="p-4 pr-6 text-right font-bold text-purple-600">
-                          {products.filter((p) => p.category_id === cat.id).length}
-                        </td>
-                        <td className="p-4 pr-6 text-center">
-                          <button
-                            onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                            className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
-                            title="Hapus Kategori"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
+                  </thead>
+                  <tbody className="text-sm text-foreground divide-y divide-border">
+                    {categories.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-muted-foreground font-medium">Belum ada kategori.</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      categories.map((cat) => (
+                        <tr key={cat.id}>
+                          <td className="p-4 pl-6 font-semibold text-foreground">{cat.name}</td>
+                          <td className="p-4 pr-6 text-muted-foreground font-mono text-xs">{cat.slug}</td>
+                          <td className="p-4 pr-6 text-right font-bold text-purple-600">
+                            {products.filter((p) => p.category_id === cat.id).length}
+                          </td>
+                          <td className="p-4 pr-6 text-center">
+                            <button
+                              onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                              className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
+                              title="Hapus Kategori"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -990,7 +1067,7 @@ export default function AdminDashboard() {
               </button>
             </form>
 
-            <div className="bg-card border border-border rounded-3xl shadow-sm overflow-x-auto">
+            <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
               {/* Input file tersembunyi, dipicu oleh tombol "Ubah Foto" tiap baris */}
               <input
                 type="file"
@@ -1007,141 +1084,263 @@ export default function AdminDashboard() {
                 onChange={handleAddGalleryImage}
                 className="hidden"
               />
-              <div className="min-w-[700px] w-full">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
-                      <th className="p-4 pl-6">Foto</th>
-                      <th className="p-4">Produk</th>
-                      <th className="p-4">Kategori</th>
-                      <th className="p-4">Harga</th>
-                      <th className="p-4">Stok</th>
-                      <th className="p-4">Status</th>
-                      <th className="p-4 pr-6 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm text-foreground divide-y divide-border">
-                    {products.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="p-8 text-center text-muted-foreground font-medium">Belum ada produk.</td>
-                      </tr>
-                    ) : (
-                      products.map((p) => {
-                        const stock = stockByProduct[p.id];
-                        return (
-                          <React.Fragment key={p.id}>
-                          <tr className="hover:bg-muted/50 transition-colors">
-                            <td className="p-4 pl-6">
-                              {p.image_url ? (
-                                <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-xl object-cover border border-border" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
-                                  <ImageIcon size={16} />
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-4 font-semibold text-foreground">{p.title}</td>
-                            <td className="p-4 text-muted-foreground">{p.categories?.name || "-"}</td>
-                            <td className="p-4 font-bold text-purple-600">
-                              {p.redirect_url ? (
-                                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">🔗 Redirect</span>
-                              ) : (
-                                <>Rp {Number(p.price).toLocaleString("id-ID")}</>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              {p.redirect_url ? (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              ) : p.delivery_type === "file" ? (
-                                <span className="text-xs text-muted-foreground">Tak terbatas</span>
-                              ) : (
-                                <span className="text-xs font-bold text-foreground">{stock?.available ?? 0} tersedia</span>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.is_active ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                                {p.is_active ? "Aktif" : "Nonaktif"}
-                              </span>
-                            </td>
-                            <td className="p-4 pr-6 flex justify-center gap-2">
-                              <button
-                                onClick={() => startEditProduct(p)}
-                                className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2 rounded-xl hover:bg-amber-500/20 transition-colors cursor-pointer"
-                                title="Edit Produk"
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                onClick={() => toggleGallery(p.id)}
-                                className="bg-purple-500/10 text-purple-600 dark:text-purple-400 p-2 rounded-xl hover:bg-purple-500/20 transition-colors cursor-pointer"
-                                title="Kelola Galeri Foto"
-                              >
-                                <Images size={16} />
-                              </button>
-                              <button
-                                onClick={() => triggerRowImageUpload(p.id)}
-                                disabled={uploadingImage}
-                                className="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50"
-                                title="Ubah Foto"
-                              >
-                                <Upload size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleToggleActive(p)}
-                                className="bg-muted text-muted-foreground p-2 rounded-xl hover:bg-muted/70 transition-colors cursor-pointer"
-                                title={p.is_active ? "Nonaktifkan" : "Aktifkan"}
-                              >
-                                <Power size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProduct(p.id, p.title)}
-                                className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
-                                title="Hapus Produk"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                          {galleryOpenFor === p.id && (
-                            <tr>
-                              <td colSpan={7} className="p-4 bg-muted/30 border-t border-border">
-                                <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
-                                  Galeri Foto Tambahan — {p.title}
-                                </p>
-                                <div className="flex flex-wrap gap-3">
-                                  {galleryImages.map((img) => (
-                                    <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border group/thumb">
-                                      <img src={img.image_url} alt="" className="w-full h-full object-cover" />
-                                      <button
-                                        onClick={() => handleDeleteGalleryImage(img.id, img.image_url)}
-                                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity cursor-pointer"
-                                        title="Hapus foto ini"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </div>
-                                  ))}
+
+              {/* Tampilan kartu untuk mobile */}
+              <div className="md:hidden divide-y divide-border">
+                {products.length === 0 ? (
+                  <p className="p-8 text-center text-muted-foreground font-medium text-sm">Belum ada produk.</p>
+                ) : (
+                  products.map((p) => {
+                    const stock = stockByProduct[p.id];
+                    return (
+                      <div key={p.id}>
+                        <div className="p-4 space-y-3">
+                          <div className="flex gap-3">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover border border-border shrink-0" />
+                            ) : (
+                              <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                                <ImageIcon size={18} />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground text-sm truncate">{p.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{p.categories?.name || "Tanpa kategori"}</p>
+                              <div className="mt-1">
+                                {p.redirect_url ? (
+                                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">🔗 Redirect</span>
+                                ) : (
+                                  <span className="font-bold text-purple-600 text-sm">Rp {Number(p.price).toLocaleString("id-ID")}</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`shrink-0 h-fit px-2.5 py-1 rounded-full text-[11px] font-bold ${p.is_active ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                              {p.is_active ? "Aktif" : "Nonaktif"}
+                            </span>
+                          </div>
+
+                          {!p.redirect_url && (
+                            <p className="text-xs text-muted-foreground">
+                              Stok: {p.delivery_type === "file" ? "Tak terbatas" : `${stock?.available ?? 0} tersedia`}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => startEditProduct(p)}
+                              className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2 rounded-xl hover:bg-amber-500/20 transition-colors cursor-pointer"
+                              title="Edit Produk"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              onClick={() => toggleGallery(p.id)}
+                              className="bg-purple-500/10 text-purple-600 dark:text-purple-400 p-2 rounded-xl hover:bg-purple-500/20 transition-colors cursor-pointer"
+                              title="Kelola Galeri Foto"
+                            >
+                              <Images size={16} />
+                            </button>
+                            <button
+                              onClick={() => triggerRowImageUpload(p.id)}
+                              disabled={uploadingImage}
+                              className="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50"
+                              title="Ubah Foto"
+                            >
+                              <Upload size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleToggleActive(p)}
+                              className="bg-muted text-muted-foreground p-2 rounded-xl hover:bg-muted/70 transition-colors cursor-pointer"
+                              title={p.is_active ? "Nonaktifkan" : "Aktifkan"}
+                            >
+                              <Power size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(p.id, p.title)}
+                              className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
+                              title="Hapus Produk"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {galleryOpenFor === p.id && (
+                          <div className="p-4 bg-muted/30 border-t border-border">
+                            <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
+                              Galeri Foto Tambahan — {p.title}
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                              {galleryImages.map((img) => (
+                                <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border">
+                                  <img src={img.image_url} alt="" className="w-full h-full object-cover" />
                                   <button
-                                    onClick={() => galleryFileInputRef.current?.click()}
-                                    disabled={uploadingGalleryImage}
-                                    className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-purple-500 hover:text-purple-500 transition-colors cursor-pointer disabled:opacity-50"
-                                    title="Tambah foto"
+                                    onClick={() => handleDeleteGalleryImage(img.id, img.image_url)}
+                                    className="absolute top-0.5 right-0.5 bg-black/60 text-white p-1 rounded-lg cursor-pointer"
+                                    title="Hapus foto ini"
                                   >
-                                    {uploadingGalleryImage ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />}
+                                    <Trash2 size={12} />
                                   </button>
                                 </div>
-                                {galleryImages.length === 0 && (
-                                  <p className="text-xs text-muted-foreground mt-2">Belum ada foto tambahan. Produk tetap bisa ditampilkan tanpa foto galeri.</p>
+                              ))}
+                              <button
+                                onClick={() => galleryFileInputRef.current?.click()}
+                                disabled={uploadingGalleryImage}
+                                className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-purple-500 hover:text-purple-500 transition-colors cursor-pointer disabled:opacity-50"
+                                title="Tambah foto"
+                              >
+                                {uploadingGalleryImage ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />}
+                              </button>
+                            </div>
+                            {galleryImages.length === 0 && (
+                              <p className="text-xs text-muted-foreground mt-2">Belum ada foto tambahan. Produk tetap bisa ditampilkan tanpa foto galeri.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Tampilan tabel untuk desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <div className="min-w-[700px] w-full">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
+                        <th className="p-4 pl-6">Foto</th>
+                        <th className="p-4">Produk</th>
+                        <th className="p-4">Kategori</th>
+                        <th className="p-4">Harga</th>
+                        <th className="p-4">Stok</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 pr-6 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm text-foreground divide-y divide-border">
+                      {products.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground font-medium">Belum ada produk.</td>
+                        </tr>
+                      ) : (
+                        products.map((p) => {
+                          const stock = stockByProduct[p.id];
+                          return (
+                            <React.Fragment key={p.id}>
+                            <tr className="hover:bg-muted/50 transition-colors">
+                              <td className="p-4 pl-6">
+                                {p.image_url ? (
+                                  <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-xl object-cover border border-border" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+                                    <ImageIcon size={16} />
+                                  </div>
                                 )}
                               </td>
+                              <td className="p-4 font-semibold text-foreground">{p.title}</td>
+                              <td className="p-4 text-muted-foreground">{p.categories?.name || "-"}</td>
+                              <td className="p-4 font-bold text-purple-600">
+                                {p.redirect_url ? (
+                                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">🔗 Redirect</span>
+                                ) : (
+                                  <>Rp {Number(p.price).toLocaleString("id-ID")}</>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                {p.redirect_url ? (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                ) : p.delivery_type === "file" ? (
+                                  <span className="text-xs text-muted-foreground">Tak terbatas</span>
+                                ) : (
+                                  <span className="text-xs font-bold text-foreground">{stock?.available ?? 0} tersedia</span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.is_active ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                                  {p.is_active ? "Aktif" : "Nonaktif"}
+                                </span>
+                              </td>
+                              <td className="p-4 pr-6 flex justify-center gap-2">
+                                <button
+                                  onClick={() => startEditProduct(p)}
+                                  className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2 rounded-xl hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                  title="Edit Produk"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  onClick={() => toggleGallery(p.id)}
+                                  className="bg-purple-500/10 text-purple-600 dark:text-purple-400 p-2 rounded-xl hover:bg-purple-500/20 transition-colors cursor-pointer"
+                                  title="Kelola Galeri Foto"
+                                >
+                                  <Images size={16} />
+                                </button>
+                                <button
+                                  onClick={() => triggerRowImageUpload(p.id)}
+                                  disabled={uploadingImage}
+                                  className="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50"
+                                  title="Ubah Foto"
+                                >
+                                  <Upload size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleToggleActive(p)}
+                                  className="bg-muted text-muted-foreground p-2 rounded-xl hover:bg-muted/70 transition-colors cursor-pointer"
+                                  title={p.is_active ? "Nonaktifkan" : "Aktifkan"}
+                                >
+                                  <Power size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProduct(p.id, p.title)}
+                                  className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
+                                  title="Hapus Produk"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
                             </tr>
-                          )}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                            {galleryOpenFor === p.id && (
+                              <tr>
+                                <td colSpan={7} className="p-4 bg-muted/30 border-t border-border">
+                                  <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
+                                    Galeri Foto Tambahan — {p.title}
+                                  </p>
+                                  <div className="flex flex-wrap gap-3">
+                                    {galleryImages.map((img) => (
+                                      <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border group/thumb">
+                                        <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                          onClick={() => handleDeleteGalleryImage(img.id, img.image_url)}
+                                          className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity cursor-pointer"
+                                          title="Hapus foto ini"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      onClick={() => galleryFileInputRef.current?.click()}
+                                      disabled={uploadingGalleryImage}
+                                      className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-purple-500 hover:text-purple-500 transition-colors cursor-pointer disabled:opacity-50"
+                                      title="Tambah foto"
+                                    >
+                                      {uploadingGalleryImage ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />}
+                                    </button>
+                                  </div>
+                                  {galleryImages.length === 0 && (
+                                    <p className="text-xs text-muted-foreground mt-2">Belum ada foto tambahan. Produk tetap bisa ditampilkan tanpa foto galeri.</p>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -1192,37 +1391,72 @@ export default function AdminDashboard() {
             </form>
 
             <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
-                    <th className="p-4 pl-6">Produk</th>
-                    <th className="p-4">Total</th>
-                    <th className="p-4">Tersedia</th>
-                    <th className="p-4 pr-6">Terjual</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm text-foreground divide-y divide-border">
-                  {products.filter((p) => p.delivery_type === "account").length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-muted-foreground font-medium">Belum ada produk bertipe Account.</td>
+              {/* Tampilan kartu untuk mobile */}
+              <div className="md:hidden divide-y divide-border">
+                {products.filter((p) => p.delivery_type === "account").length === 0 ? (
+                  <p className="p-8 text-center text-muted-foreground font-medium text-sm">Belum ada produk bertipe Account.</p>
+                ) : (
+                  products
+                    .filter((p) => p.delivery_type === "account")
+                    .map((p) => {
+                      const s = stockByProduct[p.id] || { total: 0, available: 0, sold: 0 };
+                      return (
+                        <div key={p.id} className="p-4">
+                          <p className="font-semibold text-foreground text-sm mb-3">{p.title}</p>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                              <p className="text-[11px] uppercase font-bold text-muted-foreground">Total</p>
+                              <p className="font-bold text-foreground">{s.total}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase font-bold text-muted-foreground">Tersedia</p>
+                              <p className={`font-bold ${s.available === 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>{s.available}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase font-bold text-muted-foreground">Terjual</p>
+                              <p className="font-bold text-muted-foreground">{s.sold}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+
+              {/* Tampilan tabel untuk desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground">
+                      <th className="p-4 pl-6">Produk</th>
+                      <th className="p-4">Total</th>
+                      <th className="p-4">Tersedia</th>
+                      <th className="p-4 pr-6">Terjual</th>
                     </tr>
-                  ) : (
-                    products
-                      .filter((p) => p.delivery_type === "account")
-                      .map((p) => {
-                        const s = stockByProduct[p.id] || { total: 0, available: 0, sold: 0 };
-                        return (
-                          <tr key={p.id}>
-                            <td className="p-4 pl-6 font-semibold text-foreground">{p.title}</td>
-                            <td className="p-4 text-muted-foreground">{s.total}</td>
-                            <td className={`p-4 font-bold ${s.available === 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>{s.available}</td>
-                            <td className="p-4 pr-6 text-muted-foreground">{s.sold}</td>
-                          </tr>
-                        );
-                      })
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-sm text-foreground divide-y divide-border">
+                    {products.filter((p) => p.delivery_type === "account").length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-muted-foreground font-medium">Belum ada produk bertipe Account.</td>
+                      </tr>
+                    ) : (
+                      products
+                        .filter((p) => p.delivery_type === "account")
+                        .map((p) => {
+                          const s = stockByProduct[p.id] || { total: 0, available: 0, sold: 0 };
+                          return (
+                            <tr key={p.id}>
+                              <td className="p-4 pl-6 font-semibold text-foreground">{p.title}</td>
+                              <td className="p-4 text-muted-foreground">{s.total}</td>
+                              <td className={`p-4 font-bold ${s.available === 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>{s.available}</td>
+                              <td className="p-4 pr-6 text-muted-foreground">{s.sold}</td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
