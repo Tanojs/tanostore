@@ -1,99 +1,95 @@
-# Panduan Setup — Zenon Store
+# Panduan Instalasi
 
-Ringkasan semua yang diperbaiki + cara menjalankannya dari nol.
+Ikuti urutan ini dari atas ke bawah, jangan ada yang dilewat.
 
-## Apa saja yang diperbaiki
+## 1. Buat project Supabase
 
-1. **Auto order (webhook Pakasir)** — sebelumnya bisa dipalsukan siapa saja
-   (kirim POST langsung ke `/api/pakasir-webhook` dengan status `completed`
-   dan langsung dapat produk gratis). Sekarang setiap webhook masuk **diverifikasi
-   ulang ke server Pakasir** (Transaction Detail API) sebelum diproses, dan nominal
-   pembayaran dicocokkan dengan tagihan asli.
-2. **Race condition stok** — dua pembeli yang bayar bersamaan bisa dapat item stok
-   yang sama / stok kepakai dobel. Sekarang alokasi stok dilakukan lewat fungsi
-   database `fulfill_order()` yang **atomic** (pakai row locking `FOR UPDATE SKIP
-   LOCKED`) dan **idempotent** (aman kalau webhook Pakasir terkirim berkali-kali
-   untuk order yang sama).
-3. **Wajib login sebelum beli** — `/checkout`, `/api/checkout`, `/cek-order`, dan
-   `/admin` sekarang benar-benar dicek statusnya di `middleware.ts` (server-side),
-   bukan cuma disembunyikan di UI.
-4. **Role admin/user yang sebenarnya** — sebelumnya admin dicek dari email yang
-   di-hardcode di kode (`foursixxy@gmail.com`) dan **halaman `/admin` sama sekali
-   tidak terproteksi** (user biasa yang login bisa buka langsung lewat URL).
-   Sekarang ada tabel `profiles` dengan kolom `role` (`user`/`admin`), dicek di
-   `middleware.ts` dan di halaman admin itu sendiri.
-5. **Tabel produk & tabel stok terpisah**, sesuai skema `products` dan
-   `product_items`. Tabel `product_items` (berisi data akun/kode rahasia) **tidak
-   bisa dibaca sama sekali oleh user biasa** lewat Row Level Security — hanya admin
-   dan webhook (service role) yang bisa mengaksesnya. Etalase publik menghitung
-   stok lewat view `products_with_stock` yang aman.
-6. **Kategori produk** — sebelumnya hardcode 3 pilihan (`app`/`script`/`panel`) di
-   kode. Sekarang ada tabel `categories` yang bisa ditambah admin dari dashboard.
-7. **Dashboard admin** — ditambah tab **Kategori** dan **Stok** (pantau + tambah),
-   serta tab **Produk** kini menampilkan status aktif/nonaktif dan jumlah stok tiap
-   produk.
-8. **Halaman `cek-order`** — sebelumnya query ke kolom yang tidak ada di database
-   sama sekali (pasti error). Diganti jadi halaman "Riwayat Pesanan Saya" yang
-   menampilkan pesanan milik user yang sedang login.
+1. Buka [supabase.com](https://supabase.com) → buat project baru (gratis).
+2. Tunggu sampai project selesai dibuat (±2 menit).
 
-## Langkah instalasi
+## 2. Jalankan database
 
-### 1. Jalankan skema database
+1. Di project Supabase, buka menu **SQL Editor** (sidebar kiri) → **New query**.
+2. Buka file `supabase/schema.sql` dari folder project ini, **copy semua isinya**.
+3. Paste ke SQL Editor, klik **Run**.
+4. Kalau muncul tulisan "Success", lanjut ke langkah berikutnya.
 
-Buka **Supabase Dashboard → SQL Editor → New query**, lalu copy-paste seluruh isi
-file `supabase/schema.sql`, klik **Run**. Aman dijalankan ulang jika perlu.
+## 3. Ambil kunci Supabase
 
-### 2. Set environment variables
+Masih di Supabase, buka **Project Settings** (ikon gerigi) → **API**. Kamu butuh 3 nilai ini:
 
-Copy `.env.example` menjadi `.env.local`, lalu isi semua nilainya (lihat komentar
-di tiap baris untuk tahu ambil dari mana).
+| Nama di Supabase | Dipakai untuk |
+|---|---|
+| Project URL | `NEXT_PUBLIC_SUPABASE_URL` |
+| anon public | `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| service_role | `SUPABASE_SERVICE_ROLE_KEY` (⚠️ rahasia, jangan disebar) |
+
+## 4. Daftar Pakasir (payment gateway)
+
+1. Daftar di [pakasir.com](https://pakasir.com), buat project baru.
+2. Catat **nama project** (`PAKASIR_PROJECT`) dan **API Key** (`PAKASIR_API_KEY`) dari dashboard Pakasir.
+
+## 5. Isi environment variables
+
+1. Copy file `.env.example` jadi `.env.local`.
+2. Isi semua nilainya pakai hasil dari langkah 3 dan 4.
 
 ```bash
 cp .env.example .env.local
 ```
 
-### 3. Install & jalankan
+## 6. Jalankan di komputer (opsional, buat coba dulu)
 
 ```bash
 npm install
 npm run dev
 ```
 
-### 4. Buat akun admin pertama
+Buka `http://localhost:3000` di browser.
 
-1. Daftar akun lewat halaman `/login` di web kamu.
-2. Di Supabase SQL Editor, jalankan (ganti email-nya):
+## 7. Deploy ke Vercel
+
+1. Push folder project ini ke GitHub (kalau belum).
+2. Buka [vercel.com](https://vercel.com) → **Add New Project** → pilih repo GitHub-nya.
+3. Di bagian **Environment Variables**, masukkan semua isi `.env.local` kamu satu-satu.
+4. Klik **Deploy**. Tunggu sampai selesai, nanti dikasih link `namakamu.vercel.app`.
+
+## 8. Jadikan diri sendiri Admin
+
+1. Buka website kamu yang sudah live, daftar akun lewat halaman **Login/Daftar**.
+2. Balik ke Supabase **SQL Editor**, jalankan (ganti email-nya sesuai yang barusan didaftarkan):
 
 ```sql
 update public.profiles set role = 'admin' where email = 'emailkamu@gmail.com';
 ```
 
-3. Login ulang / refresh — menu **Admin** akan muncul di navbar, dan `/admin` bisa
-   diakses.
+3. Refresh halaman website, login ulang — menu **Admin** akan muncul.
 
-### 5. Setup Pakasir
+## 9. Sambungkan Webhook Pakasir
 
-Di dashboard project Pakasir kamu, set **Webhook URL** ke:
+Di dashboard Pakasir, cari pengaturan **Webhook URL**, isi dengan:
 
 ```
-https://domainkamu.com/api/pakasir-webhook
+https://namakamu.vercel.app/api/pakasir-webhook
 ```
 
-### 6. Isi data awal
+(Ganti `namakamu.vercel.app` dengan domain kamu yang sebenarnya.)
 
-Dari `/admin`:
+## 10. Isi data toko
+
+Buka `namakamu.vercel.app/admin`:
+
 1. Tab **Kategori** → tambah minimal 1 kategori.
-2. Tab **Produk** → tambah produk (pilih kategori, tipe pengiriman Account/File).
-3. Tab **Stok** → khusus produk tipe *Account*, isi daftar akun/kode (satu baris
-   satu item).
+2. Tab **Produk** → tambah produk pertama.
+3. Tab **Stok** → kalau produknya tipe "Account", isi stoknya.
 
-## Catatan penting
+Selesai — toko sudah siap menerima pesanan.
 
-- `SUPABASE_SERVICE_ROLE_KEY` bersifat rahasia — jangan pernah commit ke git atau
-  expose ke browser. Hanya dipakai di `app/api/pakasir-webhook/route.ts`.
-- Tombol "Tandai Lunas" di tab Pesanan admin **tidak mengirim stok otomatis** —
-  itu murni untuk pelunasan manual (mis. transfer langsung). Pengiriman otomatis
-  hanya terjadi lewat webhook Pakasir + fungsi `fulfill_order()`.
-- Kalau stok habis tepat saat pembayaran QRIS masuk, order tetap ditandai **lunas**
-  (karena uang sudah diterima) dengan pesan bahwa admin akan mengirim manual — cek
-  order dengan `account_data` berisi "Stok sedang kosong" di database/dashboard.
+---
+
+## Kalau ada error
+
+- **"relation does not exist"** saat run SQL → pastikan copy SELURUH isi `schema.sql`, jangan sebagian.
+- **Login berhasil tapi menu Admin tidak muncul** → cek lagi email di langkah 8, harus sama persis dengan email akun yang didaftarkan.
+- **Pembayaran QRIS tidak otomatis lunas** → cek Webhook URL di Pakasir (langkah 9) sudah benar dan sudah di-deploy (bukan localhost).
+- **Env variable salah/kurang** → cek lagi `.env.local` (lokal) atau Environment Variables di Vercel (production), pastikan semua nilai dari langkah 3 & 4 terisi tanpa spasi/tanda kutip tambahan.
