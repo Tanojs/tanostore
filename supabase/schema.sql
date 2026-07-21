@@ -1,17 +1,18 @@
 -- =============================================================================
--- ZENON STORE — SUPABASE SCHEMA
+-- TANOPEDIA — SUPABASE SCHEMA (instalasi baru / dari nol)
 -- =============================================================================
 -- Cara pakai:
 --   1. Buka project Supabase kamu -> SQL Editor -> New query.
 --   2. Copy-paste SELURUH isi file ini, lalu klik "Run".
---   3. Aman dijalankan berkali-kali (idempotent) selama tidak mengubah tipe data.
+--   3. Selesai — lanjut ke langkah di bagian paling bawah file ini.
 --
 -- Struktur:
 --   - profiles       -> data role user (user/admin), otomatis dibuat saat sign up
 --   - categories     -> kategori produk (dikelola admin dari dashboard)
 --   - products       -> TABEL PRODUK
---   - product_items  -> TABEL STOK (terpisah dari produk, 1 baris = 1 akun/kode)
+--   - product_images -> galeri foto tambahan produk (boleh 0, 1, atau banyak)
 --   - orders         -> pesanan
+--   - product_items  -> TABEL STOK (terpisah dari produk, 1 baris = 1 akun/kode)
 --   - fulfill_order() -> fungsi inti "auto order": mengunci baris, cek stok,
 --     menandai stok terjual, dan melunaskan order secara ATOMIC (anti race
 --     condition & anti diproses dua kali / idempotent).
@@ -24,6 +25,7 @@ create table if not exists public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
   email      text,
   full_name  text,
+  avatar_url text,
   role       text not null default 'user' check (role in ('user', 'admin')),
   created_at timestamptz not null default now()
 );
@@ -69,11 +71,37 @@ drop policy if exists "profiles_select" on public.profiles;
 create policy "profiles_select" on public.profiles
   for select using (auth.uid() = id or public.is_admin());
 
--- Sengaja TIDAK ada policy insert/update untuk role biasa: perubahan role
--- (menjadikan admin) hanya boleh lewat SQL Editor Supabase oleh pemilik project.
+-- User boleh mengedit profilnya sendiri (nama, foto), TAPI tidak boleh menaikkan
+-- role-nya sendiri — dijaga oleh trigger prevent_self_role_escalation di bawah,
+-- bukan cuma oleh policy ini (defense in depth).
+drop policy if exists "profiles_update_own" on public.profiles;
+create policy "profiles_update_own" on public.profiles
+  for update using (auth.uid() = id) with check (auth.uid() = id);
+
 drop policy if exists "profiles_admin_update" on public.profiles;
 create policy "profiles_admin_update" on public.profiles
   for update using (public.is_admin()) with check (public.is_admin());
+
+-- Jaga-jaga: walau seseorang berhasil kirim request update role lewat cara apapun,
+-- role hanya boleh berubah kalau yang melakukannya memang admin.
+create or replace function public.prevent_self_role_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.role is distinct from old.role and not public.is_admin() then
+    new.role := old.role;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_profiles_prevent_role_escalation on public.profiles;
+create trigger trg_profiles_prevent_role_escalation
+  before update on public.profiles
+  for each row execute function public.prevent_self_role_escalation();
 
 
 -- -----------------------------------------------------------------------------
@@ -117,6 +145,7 @@ create table if not exists public.products (
   delivery_type text not null default 'account' check (delivery_type in ('account', 'file')),
   delivery_info text, -- link/tautan, wajib diisi jika delivery_type = 'file'
   image_url     text,
+  redirect_url  text, -- kalau diisi, tombol Beli langsung ke link ini, TANPA lewat checkout/pembayaran
   is_active     boolean not null default true,
   created_at    timestamptz not null default now(),
   constraint delivery_info_required_for_file
@@ -146,76 +175,83 @@ create policy "products_admin_delete" on public.products
 
 
 -- -----------------------------------------------------------------------------
--- 4. PRODUCT_ITEMS (TABEL STOK — terpisah dari tabel produk)
---    1 baris = 1 unit stok (misal: 1 akun premium / 1 kode lisensi)
+-- 3b. PRODUCT_IMAGES (galeri foto tambahan produk — boleh 0, 1, atau banyak foto)
 -- -----------------------------------------------------------------------------
-create table if not exists public.product_items (
+create table if not exists public.product_images (
   id         bigint generated always as identity primary key,
   product_id uuid not null references public.products(id) on delete cascade,
-  data       text not null,      -- isi akun/kode rahasia
-  is_sold    boolean not null default false,
-  order_id   uuid,               -- diisi otomatis saat item ini terjual
-  sold_at    timestamptz,
+  image_url  text not null,
+  sort_order int not null default 0,
   created_at timestamptz not null default now()
 );
 
-create index if not exists idx_product_items_available
-  on public.product_items (product_id)
-  where is_sold = false;
+create index if not exists idx_product_images_product on public.product_images(product_id);
 
-alter table public.product_items enable row level security;
+alter table public.product_images enable row level security;
 
--- PENTING: tidak ada policy select untuk role biasa sama sekali.
--- Tabel ini berisi data akun/kode rahasia, hanya admin (dan service_role
--- lewat webhook, yang otomatis bypass RLS) yang boleh membacanya.
-drop policy if exists "product_items_admin_select" on public.product_items;
-create policy "product_items_admin_select" on public.product_items
-  for select using (public.is_admin());
+drop policy if exists "product_images_select_all" on public.product_images;
+create policy "product_images_select_all" on public.product_images
+  for select using (true);
 
-drop policy if exists "product_items_admin_insert" on public.product_items;
-create policy "product_items_admin_insert" on public.product_items
+drop policy if exists "product_images_admin_insert" on public.product_images;
+create policy "product_images_admin_insert" on public.product_images
   for insert with check (public.is_admin());
 
-drop policy if exists "product_items_admin_update" on public.product_items;
-create policy "product_items_admin_update" on public.product_items
+drop policy if exists "product_images_admin_update" on public.product_images;
+create policy "product_images_admin_update" on public.product_images
   for update using (public.is_admin()) with check (public.is_admin());
 
-drop policy if exists "product_items_admin_delete" on public.product_items;
-create policy "product_items_admin_delete" on public.product_items
+drop policy if exists "product_images_admin_delete" on public.product_images;
+create policy "product_images_admin_delete" on public.product_images
   for delete using (public.is_admin());
 
 
 -- -----------------------------------------------------------------------------
--- 5. ORDERS
+-- 4. ORDERS
 -- -----------------------------------------------------------------------------
 create table if not exists public.orders (
-  id            uuid primary key default gen_random_uuid(),
-  user_id       uuid not null references auth.users(id) on delete cascade,
-  product_id    uuid not null references public.products(id),
-  quantity      integer not null check (quantity > 0),
-  unit_price    numeric(14, 2) not null,
-  total_price   numeric(14, 2) not null,
-  customer_name text,
-  whatsapp      text not null,
-  status        text not null default 'pending' check (status in ('pending', 'paid', 'expired', 'failed')),
-  account_data  text,
+  id             uuid primary key default gen_random_uuid(),
+  order_seq      bigint unique, -- nomor acak unik (100-99999), dipakai untuk tampilan "TANO-123"
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  product_id     uuid not null references public.products(id),
+  quantity       integer not null check (quantity > 0),
+  unit_price     numeric(14, 2) not null,
+  total_price    numeric(14, 2) not null,
+  customer_name  text,
+  whatsapp       text not null,
+  status         text not null default 'pending' check (status in ('pending', 'paid', 'expired', 'failed', 'cancelled')),
+  account_data   text,
   payment_method text,
-  paid_at       timestamptz,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  paid_at        timestamptz,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
 
-do $$
+-- Fungsi + trigger: bikin nomor pesanan ACAK & UNIK (100-99999) tiap ada order baru,
+-- bukan urut 1,2,3,... supaya orang lain tidak bisa menebak sudah berapa banyak pesanan masuk.
+create or replace function public.generate_order_seq()
+returns trigger
+language plpgsql
+as $$
+declare
+  candidate bigint;
 begin
-  if not exists (
-    select 1 from information_schema.table_constraints
-    where constraint_name = 'product_items_order_id_fkey'
-  ) then
-    alter table public.product_items
-      add constraint product_items_order_id_fkey
-      foreign key (order_id) references public.orders(id) on delete set null;
+  if new.order_seq is not null then
+    return new;
   end if;
-end $$;
+  loop
+    candidate := floor(random() * 99900 + 100)::bigint; -- angka acak 100 s/d 99999
+    exit when not exists (select 1 from public.orders where order_seq = candidate);
+  end loop;
+  new.order_seq := candidate;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_orders_order_seq on public.orders;
+create trigger trg_orders_order_seq
+  before insert on public.orders
+  for each row execute function public.generate_order_seq();
 
 create index if not exists idx_orders_user on public.orders(user_id);
 create index if not exists idx_orders_status on public.orders(status);
@@ -248,18 +284,59 @@ drop policy if exists "orders_insert_own_pending" on public.orders;
 create policy "orders_insert_own_pending" on public.orders
   for insert with check (auth.uid() = user_id and status = 'pending');
 
--- User HANYA boleh membatalkan order miliknya sendiri selama masih 'pending'
--- (dipakai saat gagal membuat QRIS). User TIDAK BISA mengubah status jadi 'paid'
--- sendiri — itu hanya lewat admin (dashboard) atau webhook pembayaran (service_role).
+-- User HANYA boleh mengubah order miliknya sendiri selama masih 'pending', dan
+-- hasil akhirnya cuma boleh 'pending' -> 'failed'/'cancelled' (batal manual atau
+-- gagal saat buat QRIS). User TIDAK BISA mengubah status jadi 'paid' sendiri —
+-- itu hanya lewat admin (dashboard) atau webhook pembayaran (service_role).
 drop policy if exists "orders_owner_cancel_pending" on public.orders;
 create policy "orders_owner_cancel_pending" on public.orders
   for update
   using (auth.uid() = user_id and status = 'pending')
-  with check (auth.uid() = user_id and status in ('pending', 'failed'));
+  with check (auth.uid() = user_id and status in ('pending', 'failed', 'cancelled'));
 
 drop policy if exists "orders_admin_update" on public.orders;
 create policy "orders_admin_update" on public.orders
   for update using (public.is_admin()) with check (public.is_admin());
+
+
+-- -----------------------------------------------------------------------------
+-- 5. PRODUCT_ITEMS (TABEL STOK — terpisah dari tabel produk)
+--    1 baris = 1 unit stok (misal: 1 akun premium / 1 kode lisensi)
+-- -----------------------------------------------------------------------------
+create table if not exists public.product_items (
+  id         bigint generated always as identity primary key,
+  product_id uuid not null references public.products(id) on delete cascade,
+  data       text not null,      -- isi akun/kode rahasia
+  is_sold    boolean not null default false,
+  order_id   uuid references public.orders(id) on delete set null, -- diisi otomatis saat item ini terjual
+  sold_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_product_items_available
+  on public.product_items (product_id)
+  where is_sold = false;
+
+alter table public.product_items enable row level security;
+
+-- PENTING: tidak ada policy select untuk role biasa sama sekali.
+-- Tabel ini berisi data akun/kode rahasia, hanya admin (dan service_role
+-- lewat webhook, yang otomatis bypass RLS) yang boleh membacanya.
+drop policy if exists "product_items_admin_select" on public.product_items;
+create policy "product_items_admin_select" on public.product_items
+  for select using (public.is_admin());
+
+drop policy if exists "product_items_admin_insert" on public.product_items;
+create policy "product_items_admin_insert" on public.product_items
+  for insert with check (public.is_admin());
+
+drop policy if exists "product_items_admin_update" on public.product_items;
+create policy "product_items_admin_update" on public.product_items
+  for update using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "product_items_admin_delete" on public.product_items;
+create policy "product_items_admin_delete" on public.product_items
+  for delete using (public.is_admin());
 
 
 -- -----------------------------------------------------------------------------
@@ -281,6 +358,7 @@ select
   p.delivery_type,
   p.image_url,
   p.created_at,
+  p.redirect_url,
   case
     when p.delivery_type = 'file' then null
     else (
@@ -412,6 +490,53 @@ grant execute on function public.fulfill_order(uuid, numeric) to service_role;
 
 
 -- -----------------------------------------------------------------------------
+-- 7b. AUTO-EXPIRE ORDER PENDING YANG KELAMAAN TIDAK DIBAYAR
+-- -----------------------------------------------------------------------------
+-- Batas waktu pembayaran QRIS. Ubah angka "10" di kedua fungsi di bawah kalau
+-- mau durasinya beda (dalam menit).
+
+-- Cek & expire SATU order tertentu kalau memang sudah lewat batas waktu.
+-- Aman dipanggil siapa saja (anon/authenticated) karena hanya mengecek waktu
+-- sebenarnya di server, bukan input dari client — tidak bisa disalahgunakan
+-- untuk membatalkan order orang lain lebih cepat dari waktunya.
+create or replace function public.expire_order_if_stale(p_order_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.orders
+  set status = 'expired'
+  where id = p_order_id
+    and status = 'pending'
+    and created_at < now() - interval '10 minutes';
+end;
+$$;
+
+grant execute on function public.expire_order_if_stale(uuid) to anon, authenticated;
+
+-- Expire SEMUA order pending yang sudah lewat batas waktu sekaligus. Dipanggil
+-- dari halaman riwayat pesanan / dashboard admin tiap kali dibuka, supaya
+-- statusnya selalu akurat tanpa perlu proses background terpisah.
+create or replace function public.expire_all_stale_orders()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.orders
+  set status = 'expired'
+  where status = 'pending'
+    and created_at < now() - interval '10 minutes';
+end;
+$$;
+
+grant execute on function public.expire_all_stale_orders() to anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
 -- 8. STORAGE BUCKET UNTUK FOTO PRODUK
 -- -----------------------------------------------------------------------------
 -- Bucket publik: siapa saja boleh MELIHAT foto, tapi hanya admin yang boleh
@@ -438,14 +563,65 @@ create policy "product_images_admin_delete" on storage.objects
 
 
 -- -----------------------------------------------------------------------------
+-- 8b. STORAGE BUCKET UNTUK FOTO PROFIL
+-- -----------------------------------------------------------------------------
+-- Bucket publik: siapa saja boleh MELIHAT foto profil, tapi tiap user cuma boleh
+-- upload/ubah/hapus foto miliknya sendiri. Path file wajib diawali user id-nya
+-- sendiri, misal: "<user_id>/avatar.jpg" — ditegakkan lewat storage.foldername().
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists "avatars_public_read" on storage.objects;
+create policy "avatars_public_read" on storage.objects
+  for select using (bucket_id = 'avatars');
+
+drop policy if exists "avatars_owner_insert" on storage.objects;
+create policy "avatars_owner_insert" on storage.objects
+  for insert with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "avatars_owner_update" on storage.objects;
+create policy "avatars_owner_update" on storage.objects
+  for update using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "avatars_owner_delete" on storage.objects;
+create policy "avatars_owner_delete" on storage.objects
+  for delete using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+
+-- -----------------------------------------------------------------------------
+-- 8c. STORAGE BUCKET UNTUK FILE PRODUK DIGITAL (upload langsung, mis. .zip)
+-- -----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('product-files', 'product-files', true, 52428800)
+on conflict (id) do nothing;
+
+drop policy if exists "product_files_public_read" on storage.objects;
+create policy "product_files_public_read" on storage.objects
+  for select using (bucket_id = 'product-files');
+
+drop policy if exists "product_files_admin_insert" on storage.objects;
+create policy "product_files_admin_insert" on storage.objects
+  for insert with check (bucket_id = 'product-files' and public.is_admin());
+
+drop policy if exists "product_files_admin_update" on storage.objects;
+create policy "product_files_admin_update" on storage.objects
+  for update using (bucket_id = 'product-files' and public.is_admin());
+
+drop policy if exists "product_files_admin_delete" on storage.objects;
+create policy "product_files_admin_delete" on storage.objects
+  for delete using (bucket_id = 'product-files' and public.is_admin());
+
+
+-- -----------------------------------------------------------------------------
 -- 9. LANGKAH SETELAH MENJALANKAN SCRIPT INI
 -- -----------------------------------------------------------------------------
 -- 1) Daftar akun pertama lewat halaman /login di web kamu.
--- 2) Jadikan akun itu admin dengan menjalankan (ganti emailnya):
+-- 2) Jadikan akun itu admin dengan menjalankan di SQL Editor (ganti emailnya):
 --
 --      update public.profiles set role = 'admin' where email = 'admin@email.com';
 --
--- 3) Tambahkan beberapa kategori & produk (+foto) lewat dashboard /admin.
+-- 3) Tambahkan kategori & produk (+foto) lewat dashboard /admin.
 -- 4) Set Webhook URL di project Pakasir kamu ke:
 --      https://domainkamu.com/api/pakasir-webhook
 -- =============================================================================
