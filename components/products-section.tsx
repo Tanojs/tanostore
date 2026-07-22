@@ -104,7 +104,7 @@ export function ProductsSection() {
     <section id="products" className="py-8 bg-background text-foreground px-3 sm:px-6 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
 
-        <div className="relative max-w-md mx-auto mb-4">
+        <div className="relative max-w-md mx-auto mb-8">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <input
             type="text"
@@ -115,7 +115,10 @@ export function ProductsSection() {
           />
         </div>
 
-        <div className="flex flex-nowrap gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar justify-start md:flex-wrap md:justify-center">
+        <div
+          className="flex flex-nowrap gap-3 mb-6 overflow-x-auto pb-1 no-scrollbar justify-start md:flex-wrap md:justify-center"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           <button
             onClick={() => setActiveCategory("semua")}
             className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer ${
