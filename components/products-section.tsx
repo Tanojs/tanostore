@@ -111,7 +111,7 @@ export function ProductsSection() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari layanan (cth: Spotify)..."
-            className="w-full pl-11 pr-4 py-3 rounded-2xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full pl-11 pr-4 py-3 rounded-2xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-purple-500 transition-colors duration-300"
           />
         </div>
 
@@ -121,7 +121,7 @@ export function ProductsSection() {
         >
           <button
             onClick={() => setActiveCategory("semua")}
-            className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer ${
+            className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 shrink-0 cursor-pointer ${
               activeCategory === "semua"
                 ? "bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] text-white shadow-lg shadow-[#6C3CE1]/30"
                 : "bg-card border border-border text-muted-foreground hover:border-[#6C3CE1] hover:text-[#6C3CE1]"
@@ -133,7 +133,7 @@ export function ProductsSection() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 shrink-0 cursor-pointer ${
                 activeCategory === cat.id
                   ? "bg-gradient-to-r from-[#6C3CE1] to-[#a855f7] text-white shadow-lg shadow-[#6C3CE1]/30"
                   : "bg-card border border-border text-muted-foreground hover:border-[#6C3CE1] hover:text-[#6C3CE1]"
