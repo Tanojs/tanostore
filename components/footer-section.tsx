@@ -2,6 +2,7 @@
 
 import { Zap } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 const WHATSAPP_NUMBER = "6285701961876";
 const WHATSAPP_CHANNEL = "https://whatsapp.com/channel/0029VbCUCFf5a24DCL3z4W40";
@@ -43,10 +44,12 @@ export function FooterSection() {
           {/* Logo Section */}
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#a855f7] flex items-center justify-center shadow-lg overflow-hidden">
-              <img 
-                src="/images/logo.png" 
+              <Image
+                src="/images/logo.png"
                 alt="Logo"
-                className="w-4 h-4 object-contain" 
+                width={16}
+                height={16}
+                className="w-4 h-4 object-contain"
               />
             </div>
             <span className="text-xs sm:text-sm text-foreground font-bold">
