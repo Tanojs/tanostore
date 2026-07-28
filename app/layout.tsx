@@ -10,10 +10,22 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tanostore.vercel.app";
+const siteTitle = "TanoPedia - Panel WhatsApp & Script Bot Premium";
+const siteDescription =
+  "Beli produk premium panel WhatsApp dan script bot WA untuk kebutuhan bisnis Anda. Harga murah, proses cepat, support 24/7.";
+
 export const metadata: Metadata = {
-  title: "TanoPedia - Panel WhatsApp & Script Bot Premium",
-  description:
-    "Beli produk premium panel WhatsApp dan script bot WA untuk kebutuhan bisnis Anda. Harga murah, proses cepat, support 24/7.",
+  // Dasar untuk resolve URL relatif (og:image, sitemap, dll) -> WAJIB diisi
+  // env NEXT_PUBLIC_SITE_URL dengan domain asli di Vercel, lihat .env.example.
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: siteTitle,
+    // Halaman lain tinggal set title: "Nama Produk" -> otomatis jadi
+    // "Nama Produk | TanoPedia" di tab browser & hasil pencarian.
+    template: "%s | TanoPedia",
+  },
+  description: siteDescription,
   keywords: [
     "panel whatsapp",
     "script bot wa",
@@ -21,6 +33,23 @@ export const metadata: Metadata = {
     "broadcast wa",
     "auto reply whatsapp",
   ],
+  icons: {
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: siteUrl,
+    siteName: "TanoPedia",
+    locale: "id_ID",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+  },
 };
 
 export const viewport: Viewport = {
