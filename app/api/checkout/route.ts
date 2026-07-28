@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { checkCheckoutRateLimit } from "@/lib/rate-limit";
 
 const MAX_QTY = 10;
 
@@ -17,6 +18,18 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Anda harus login terlebih dahulu untuk melakukan pembelian." },
         { status: 401 }
+      );
+    }
+
+    // Cegah spam order: batasi jumlah order baru per user dalam periode waktu
+    // tertentu (lihat lib/rate-limit.ts untuk detail batasnya).
+    const { allowed, retryAfterMinutes } = await checkCheckoutRateLimit(supabase, user.id);
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: `Terlalu banyak percobaan membuat pesanan. Silakan coba lagi dalam ${retryAfterMinutes} menit.`,
+        },
+        { status: 429 }
       );
     }
 
