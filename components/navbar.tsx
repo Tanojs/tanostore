@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -93,10 +94,13 @@ export function Navbar() {
           {/* Logo Tano Pedia */}
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#a855f7] flex items-center justify-center shadow-lg shadow-[#6C3CE1]/20 overflow-hidden">
-              <img 
-                src="/images/logo.png" 
-                alt="Logo Tano Pedia" 
-                className="w-6 h-6 sm:w-7 sm:h-7 object-contain" 
+              <Image
+                src="/images/logo.png"
+                alt="Logo Tano Pedia"
+                width={28}
+                height={28}
+                priority
+                className="w-6 h-6 sm:w-7 sm:h-7 object-contain"
               />
             </div>
             <span className="font-extrabold text-foreground text-base sm:text-lg tracking-tight">
