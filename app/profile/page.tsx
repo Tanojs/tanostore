@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import Swal from "sweetalert2";
 import {
@@ -258,7 +259,7 @@ export default function ProfilePage() {
           <div className="relative inline-block">
             <div className="w-20 h-20 rounded-full bg-muted overflow-hidden flex items-center justify-center border-2 border-border mx-auto">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Foto profil" className="w-full h-full object-cover" />
+                <Image src={profile.avatar_url} alt="Foto profil" width={80} height={80} className="w-full h-full object-cover" />
               ) : (
                 <User className="text-muted-foreground" size={32} />
               )}
