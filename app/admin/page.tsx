@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import NextImage from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import {
   LayoutDashboard,
@@ -1037,7 +1038,7 @@ export default function AdminDashboard() {
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-1">Foto Produk (opsional)</label>
                 {editingProductId && editingImageUrl && !productImageFile && (
                   <div className="mb-2 flex items-center gap-2">
-                    <img src={editingImageUrl} alt="Foto saat ini" className="w-12 h-12 rounded-xl object-cover border border-border" />
+                    <NextImage src={editingImageUrl} alt="Foto saat ini" width={48} height={48} className="w-12 h-12 rounded-xl object-cover border border-border" />
                     <span className="text-[11px] text-muted-foreground">Foto saat ini — pilih file baru untuk mengganti</span>
                   </div>
                 )}
@@ -1097,7 +1098,7 @@ export default function AdminDashboard() {
                         <div className="p-4 space-y-3">
                           <div className="flex gap-3">
                             {p.image_url ? (
-                              <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover border border-border shrink-0" />
+                              <NextImage src={p.image_url} alt={p.title} width={56} height={56} className="w-14 h-14 rounded-xl object-cover border border-border shrink-0" />
                             ) : (
                               <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0">
                                 <ImageIcon size={18} />
@@ -1173,7 +1174,7 @@ export default function AdminDashboard() {
                             <div className="flex flex-wrap gap-3">
                               {galleryImages.map((img) => (
                                 <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border">
-                                  <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                                  <NextImage src={img.image_url} alt="" fill sizes="64px" className="object-cover" />
                                   <button
                                     onClick={() => handleDeleteGalleryImage(img.id, img.image_url)}
                                     className="absolute top-0.5 right-0.5 bg-black/60 text-white p-1 rounded-lg cursor-pointer"
@@ -1231,7 +1232,7 @@ export default function AdminDashboard() {
                             <tr className="hover:bg-muted/50 transition-colors">
                               <td className="p-4 pl-6">
                                 {p.image_url ? (
-                                  <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-xl object-cover border border-border" />
+                                  <NextImage src={p.image_url} alt={p.title} width={40} height={40} className="w-10 h-10 rounded-xl object-cover border border-border" />
                                 ) : (
                                   <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                                     <ImageIcon size={16} />
@@ -1309,7 +1310,7 @@ export default function AdminDashboard() {
                                   <div className="flex flex-wrap gap-3">
                                     {galleryImages.map((img) => (
                                       <div key={img.id} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border group/thumb">
-                                        <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                                        <NextImage src={img.image_url} alt="" fill sizes="64px" className="object-cover" />
                                         <button
                                           onClick={() => handleDeleteGalleryImage(img.id, img.image_url)}
                                           className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity cursor-pointer"
