@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Server, Search } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 
 const supabase = createClient();
@@ -168,10 +169,12 @@ export function ProductsSection() {
                 <Link href={`/product/${product.id}`} className="contents">
                   <div className="relative aspect-square w-full bg-zinc-200 dark:bg-zinc-800 rounded-[18px] overflow-hidden shrink-0 flex items-center justify-center mb-3 cursor-pointer">
                     {product.image_url ? (
-                      <img
+                      <Image
                         src={product.image_url}
                         alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                        fill
+                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 20vw"
+                        className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
                       />
                     ) : (
                       <Server className="w-10 h-10 text-[#6C3CE1] dark:text-purple-400" />
