@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { ArrowLeft, Server, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -101,7 +102,14 @@ export default function ProductDetailPage() {
           {/* GALERI FOTO — boleh kosong sama sekali */}
           <div className="relative aspect-square w-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center">
             {images.length > 0 ? (
-              <img src={images[activeImage]} alt={product.title} className="w-full h-full object-cover" />
+              <Image
+                src={images[activeImage]}
+                alt={product.title}
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+              />
             ) : (
               <Server className="w-16 h-16 text-[#6C3CE1] dark:text-purple-400" />
             )}
@@ -140,11 +148,11 @@ export default function ProductDetailPage() {
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
-                  className={`shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-colors cursor-pointer ${
+                  className={`relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-colors cursor-pointer ${
                     i === activeImage ? "border-purple-600" : "border-transparent"
                   }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <Image src={img} alt="" fill sizes="56px" className="object-cover" />
                 </button>
               ))}
             </div>
