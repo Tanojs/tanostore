@@ -4,6 +4,7 @@ import React, { useEffect, useCallback, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronRight, Zap, Shield, Users } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 // 📦 PERUBAHAN UTAMA: Target diubah semua ke #products agar tombol berfungsi kembali
 const SLIDES = [
@@ -71,7 +72,14 @@ export function HeroSection() {
             <div className="flex">
               {SLIDES.map((slide, index) => (
                 <div className="flex-[0_0_100%] min-w-0 relative h-[260px] sm:h-[350px] flex items-center p-6 sm:p-12" key={index}>
-                  <img src={slide.bg} className="absolute inset-0 w-full h-full object-cover opacity-90 z-0 scale-100" alt="" />
+                  <Image
+                    src={slide.bg}
+                    alt=""
+                    fill
+                    priority={index === 0}
+                    sizes="100vw"
+                    className="object-cover opacity-90 z-0 scale-100"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-1" />
 
                   <div className="relative z-10 w-full">
