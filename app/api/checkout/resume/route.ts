@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { checkResumeRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,16 @@ export async function POST(request: Request) {
 
     if (!orderId) {
       return NextResponse.json({ error: "order_id tidak valid" }, { status: 400 });
+    }
+
+    const { allowed, retryAfterSeconds } = checkResumeRateLimit(user.id, orderId);
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: `Terlalu banyak percobaan memuat ulang pembayaran. Coba lagi dalam ${retryAfterSeconds} detik.`,
+        },
+        { status: 429 }
+      );
     }
 
     // Pastikan status-nya akurat dulu — kalau sudah lewat 10 menit sejak dibuat,
