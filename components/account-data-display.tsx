@@ -59,19 +59,21 @@ export function AccountDataDisplay({ data }: { data: string | null }) {
     );
   }
 
-  // Lebih dari 1 blok (beli beberapa pcs sekaligus) -> pisahkan tiap akun jadi
-  // kartu sendiri, diberi nomor.
+  // Lebih dari 1 blok (beli beberapa pcs sekaligus) -> ditampilkan sebagai
+  // list bernomor (1. 2. 3. dst) dengan jarak & garis pembatas tipis antar
+  // akun, biar jelas kelihatan mana batas akun satu ke akun berikutnya.
   return (
-    <div className="space-y-2">
+    <div className="p-3 bg-muted rounded-xl border border-border">
       {blocks.map((block, i) => (
-        <div key={i} className="p-3 bg-muted rounded-xl border border-border">
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-              Akun #{i + 1}
-            </span>
-            <CopyButton text={block} />
-          </div>
-          <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all">{block}</pre>
+        <div
+          key={i}
+          className={`flex items-start justify-between gap-3 ${i > 0 ? "mt-3 pt-3 border-t border-border/60" : ""}`}
+        >
+          <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all">
+            <span className="font-sans font-bold text-purple-600 dark:text-purple-400">{i + 1}. </span>
+            {block}
+          </pre>
+          <CopyButton text={block} />
         </div>
       ))}
     </div>
