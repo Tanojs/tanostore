@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { Loader2, Package, CheckCircle2, Clock, XCircle, QrCode, Search, Ban } from "lucide-react";
+import { AccountDataDisplay } from "@/components/account-data-display";
 
 const supabase = createClient();
 
@@ -146,9 +147,9 @@ export default function CekOrderPage() {
                   </div>
 
                   {o.status === "paid" && (
-                    <div className="mt-4 p-3 bg-muted rounded-xl border border-border text-xs font-mono text-foreground break-all whitespace-pre-line">
-                      <p className="font-sans font-bold text-muted-foreground mb-1">🎁 Data Pesanan Anda:</p>
-                      {o.account_data || "Data sedang disiapkan..."}
+                    <div className="mt-4">
+                      <p className="text-xs font-bold uppercase text-muted-foreground mb-2">🎁 Data Pesanan Anda</p>
+                      <AccountDataDisplay data={o.account_data} />
                     </div>
                   )}
 
