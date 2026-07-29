@@ -8,9 +8,9 @@ const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
   : undefined;
 
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // ignoreBuildErrors DIHAPUS: sebelumnya di-set true, artinya build tetap
+  // "sukses" & ke-deploy walau ada bug tipe data. Sekarang error TypeScript
+  // beneran menghentikan build, biar bug ketauan sebelum nyampe production.
   images: {
     remotePatterns: supabaseHostname
       ? [
