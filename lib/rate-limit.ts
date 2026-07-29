@@ -36,3 +36,35 @@ export async function checkCheckoutRateLimit(
 
   return { allowed: true, retryAfterMinutes: 0 };
 }
+
+// --- Rate limit untuk /api/checkout/resume ---
+//
+// Beda dari checkout utama: resume TIDAK bikin row order baru, jadi nggak
+// bisa dihitung dari tabel orders. Pakai counter in-memory per order sebagai
+// gantinya. Catatan jujur: counter ini otomatis reset kalau server function-nya
+// "dingin"/restart (wajar di lingkungan serverless), jadi ini bukan proteksi
+// sekuat yang di checkout utama. Tapi risikonya juga lebih rendah -- resume
+// cuma bisa dipakai untuk order pending milik sendiri, dan Pakasir selalu
+// balikin QRIS yang sama persis untuk order_id yang sama -- jadi ini sudah
+// cukup untuk mencegah spam biasa tanpa perlu bikin tabel baru di database.
+const resumeAttempts = new Map<string, number[]>();
+const RESUME_MAX_ATTEMPTS = 5;
+const RESUME_WINDOW_MS = 60_000; // 1 menit
+
+export function checkResumeRateLimit(
+  userId: string,
+  orderId: string
+): { allowed: boolean; retryAfterSeconds: number } {
+  const key = `${userId}:${orderId}`;
+  const now = Date.now();
+  const timestamps = (resumeAttempts.get(key) ?? []).filter((t) => now - t < RESUME_WINDOW_MS);
+
+  if (timestamps.length >= RESUME_MAX_ATTEMPTS) {
+    const retryAfterSeconds = Math.ceil((RESUME_WINDOW_MS - (now - timestamps[0])) / 1000);
+    return { allowed: false, retryAfterSeconds };
+  }
+
+  timestamps.push(now);
+  resumeAttempts.set(key, timestamps);
+  return { allowed: true, retryAfterSeconds: 0 };
+}
