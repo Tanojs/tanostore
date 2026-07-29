@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
+import { AccountDataDisplay } from "@/components/account-data-display";
 import Swal from "sweetalert2";
 import {
   User,
@@ -363,9 +364,7 @@ export default function ProfilePage() {
                   </button>
                   {expandedPurchase === p.id && (
                     <div className="px-3.5 pb-3.5">
-                      <pre className="p-3 bg-muted rounded-xl text-xs font-mono text-foreground whitespace-pre-wrap break-all">
-                        {p.account_data || "Data sedang disiapkan..."}
-                      </pre>
+                      <AccountDataDisplay data={p.account_data} />
                     </div>
                   )}
                 </div>
@@ -504,10 +503,6 @@ export default function ProfilePage() {
               Hubungi Admin
             </a>
 <Link href="/#faq" className="flex items-center gap-3 text-sm font-semibold text-foreground py-2.5 cursor-pointer">
-              <HelpCircle size={16} className="text-muted-foreground" />
-              FAQ
-            </Link>
-            <Link href="/#faq" className="flex items-center gap-3 text-sm font-semibold text-foreground py-2.5 cursor-pointer">
               <BookOpen size={16} className="text-muted-foreground" />
               Panduan Pembelian
             </Link>
