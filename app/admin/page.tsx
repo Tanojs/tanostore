@@ -22,6 +22,11 @@ import {
   Upload,
   Trash2,
   Pencil,
+  LogOut,
+  Wallet,
+  Clock,
+  PackageCheck,
+  PackageX,
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -67,6 +72,7 @@ interface StockCount {
 export default function AdminDashboard() {
   const router = useRouter();
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"orders" | "categories" | "products" | "stock">("orders");
   const [loading, setLoading] = useState(false);
@@ -127,6 +133,7 @@ export default function AdminDashboard() {
         router.replace("/");
         return;
       }
+      setAdminEmail(user.email ?? null);
       setCheckingAccess(false);
     }
     checkAccess();
@@ -596,6 +603,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    const result = await Swal.fire({
+      title: "Keluar dari akun?",
+      text: "Kamu akan logout dari dashboard admin.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Keluar",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#dc2626",
+    });
+    if (result.isConfirmed) {
+      await supabase.auth.signOut();
+      router.replace("/login");
+    }
+  };
+
+  // Statistik ringkasan -- dihitung dari data yang sudah ada di state (orders,
+  // products, stockByProduct), jadi TIDAK nambah query baru ke database.
+  const todayRevenue = orders
+    .filter((o) => o.status === "paid" && new Date(o.created_at).toDateString() === new Date().toDateString())
+    .reduce((sum, o) => sum + Number(o.total_price), 0);
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const activeProductCount = products.filter((p) => p.is_active).length;
+  const lowStockCount = products.filter(
+    (p) => p.delivery_type === "account" && !p.redirect_url && (stockByProduct[p.id]?.available ?? 0) < 5
+  ).length;
+
   const navItems = [
     { id: "orders", label: "Daftar Pesanan", icon: <ShoppingBag size={18} /> },
     { id: "categories", label: "Kategori", icon: <Tags size={18} /> },
@@ -615,11 +649,16 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* HEADER MOBILE */}
       <div className="md:hidden bg-card border-b border-border p-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <div className="bg-purple-600 p-1.5 rounded-lg text-white">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="bg-purple-600 p-1.5 rounded-lg text-white shrink-0">
             <LayoutDashboard size={18} />
           </div>
-          <span className="font-black text-foreground text-base">Dasbor Admin</span>
+          <div className="min-w-0">
+            <span className="font-black text-foreground text-base block leading-tight">Dasbor Admin</span>
+            <span className="text-[11px] text-muted-foreground block leading-tight truncate">
+              {navItems.find((n) => n.id === activeTab)?.label}
+            </span>
+          </div>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -652,6 +691,21 @@ export default function AdminDashboard() {
             {item.label}
           </button>
         ))}
+
+        <div className="mt-auto pt-4 border-t border-border">
+          {adminEmail && (
+            <p className="px-2 mb-2 text-xs text-muted-foreground truncate" title={adminEmail}>
+              {adminEmail}
+            </p>
+          )}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+          >
+            <LogOut size={18} />
+            Keluar
+          </button>
+        </div>
       </div>
 
       {/* AREA KONTEN UTAMA */}
@@ -659,7 +713,53 @@ export default function AdminDashboard() {
         {/* TAB 1: DAFTAR PESANAN */}
         {activeTab === "orders" && (
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-foreground mb-6">Pantau Transaksi Masuk 🛒</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-foreground mb-2">Pantau Transaksi Masuk 🛒</h1>
+            <p className="text-sm text-muted-foreground mb-5">Ringkasan cepat, lalu daftar pesanan di bawah.</p>
+
+            {/* RINGKASAN STATISTIK */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="bg-card border border-border rounded-2xl p-4 flex items-start gap-3">
+                <div className="bg-green-500/10 text-green-600 dark:text-green-400 p-2 rounded-xl shrink-0">
+                  <Wallet size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase truncate">Pendapatan Hari Ini</p>
+                  <p className="text-base sm:text-lg font-black text-foreground truncate">
+                    Rp {todayRevenue.toLocaleString("id-ID")}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-4 flex items-start gap-3">
+                <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2 rounded-xl shrink-0">
+                  <Clock size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase truncate">Pesanan Pending</p>
+                  <p className="text-base sm:text-lg font-black text-foreground">{pendingCount}</p>
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-4 flex items-start gap-3">
+                <div className="bg-purple-500/10 text-purple-600 dark:text-purple-400 p-2 rounded-xl shrink-0">
+                  <PackageCheck size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase truncate">Produk Aktif</p>
+                  <p className="text-base sm:text-lg font-black text-foreground">{activeProductCount}</p>
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-4 flex items-start gap-3">
+                <div className="bg-red-500/10 text-red-600 dark:text-red-400 p-2 rounded-xl shrink-0">
+                  <PackageX size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase truncate">Stok Menipis</p>
+                  <p className={`text-base sm:text-lg font-black ${lowStockCount > 0 ? "text-red-500 dark:text-red-400" : "text-foreground"}`}>
+                    {lowStockCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
               {/* Tampilan kartu untuk mobile */}
               <div className="md:hidden divide-y divide-border">
