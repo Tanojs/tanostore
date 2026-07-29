@@ -637,6 +637,47 @@ export default function AdminDashboard() {
     { id: "stock", label: "Stok", icon: <KeyRound size={18} /> },
   ];
 
+  const sidebarNav = (
+    <>
+      <div className="hidden md:flex items-center gap-3 mb-8 px-2">
+        <div className="bg-purple-600 p-2 rounded-xl text-white">
+          <LayoutDashboard size={20} />
+        </div>
+        <span className="font-black text-foreground text-lg">Dasbor Admin</span>
+      </div>
+      {navItems.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => {
+            setActiveTab(item.id as any);
+            setIsMobileMenuOpen(false);
+          }}
+          className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
+            activeTab === item.id ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          {item.icon}
+          {item.label}
+        </button>
+      ))}
+
+      <div className="mt-auto pt-4 border-t border-border">
+        {adminEmail && (
+          <p className="px-2 mb-2 text-xs text-muted-foreground truncate" title={adminEmail}>
+            {adminEmail}
+          </p>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+        >
+          <LogOut size={18} />
+          Keluar
+        </button>
+      </div>
+    </>
+  );
+
   if (checkingAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -668,43 +709,28 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* SIDEBAR */}
-      <div className={`w-full md:w-64 bg-card border-r border-border p-6 flex flex-col gap-2 ${isMobileMenuOpen ? "block" : "hidden md:flex"} md:sticky md:top-0 md:h-screen`}>
-        <div className="hidden md:flex items-center gap-3 mb-8 px-2">
-          <div className="bg-purple-600 p-2 rounded-xl text-white">
-            <LayoutDashboard size={20} />
-          </div>
-          <span className="font-black text-foreground text-lg">Dasbor Admin</span>
-        </div>
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => {
-              setActiveTab(item.id as any);
-              setIsMobileMenuOpen(false);
-            }}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
-              activeTab === item.id ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        ))}
+      {/* SIDEBAR DESKTOP (statis, cuma tampil di layar >= md) */}
+      <div className="hidden md:flex md:w-64 bg-card border-r border-border p-6 flex-col gap-2 md:sticky md:top-0 md:h-screen">
+        {sidebarNav}
+      </div>
 
-        <div className="mt-auto pt-4 border-t border-border">
-          {adminEmail && (
-            <p className="px-2 mb-2 text-xs text-muted-foreground truncate" title={adminEmail}>
-              {adminEmail}
-            </p>
-          )}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
-          >
-            <LogOut size={18} />
-            Keluar
-          </button>
+      {/* DRAWER MENU MOBILE — fixed ke viewport, jadi selalu muncul pas
+          hamburger dipencet, nggak peduli posisi scroll halaman saat itu. */}
+      <div
+        className={`md:hidden fixed inset-0 z-50 transition-opacity duration-200 ${
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+        <div
+          className={`absolute top-0 left-0 h-full w-72 max-w-[80%] bg-card p-6 flex flex-col gap-2 shadow-2xl overflow-y-auto transition-transform duration-200 ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          {sidebarNav}
         </div>
       </div>
 
