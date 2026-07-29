@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Mail, Lock, LogIn, UserPlus, Loader2, Eye, EyeOff, ArrowLeft, Send } from "lucide-react";
+import { getRemainingLockoutSeconds, registerFailedAttempt, clearFailedAttempts } from "@/lib/login-lockout";
 
 const supabase = createClient();
 
@@ -17,11 +18,42 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+
+  // Kalau halaman dibuka/refresh saat masih dalam masa lockout (tersimpan di
+  // sessionStorage), lanjutkan hitung mundurnya alih-alih reset.
+  useEffect(() => {
+    const remaining = getRemainingLockoutSeconds();
+    if (remaining > 0) setLockedUntil(Date.now() + remaining * 1000);
+  }, []);
+
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
+      setLockoutSeconds(remaining);
+      if (remaining === 0) {
+        setLockedUntil(0);
+        setMessage(null);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
 
   // Fungsi untuk menangani Login (Sign In)
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+
+    const remaining = getRemainingLockoutSeconds();
+    if (remaining > 0) {
+      setLockedUntil(Date.now() + remaining * 1000);
+      setMessage({ type: "error", text: `Terlalu banyak percobaan gagal. Coba lagi dalam ${remaining} detik.` });
+      return;
+    }
 
     setLoading(true);
     setMessage(null);
@@ -32,9 +64,16 @@ function LoginForm() {
     });
 
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      const lockedFor = registerFailedAttempt();
+      if (lockedFor > 0) {
+        setLockedUntil(Date.now() + lockedFor * 1000);
+        setMessage({ type: "error", text: `Terlalu banyak percobaan gagal. Coba lagi dalam ${lockedFor} detik.` });
+      } else {
+        setMessage({ type: "error", text: error.message });
+      }
       setLoading(false);
     } else {
+      clearFailedAttempts();
       setMessage({ type: "success", text: "Login berhasil! Mengalihkan..." });
       
       // Menggunakan reload penuh agar cookie sesi baru langsung terbaca Middleware 🔄
@@ -175,11 +214,11 @@ function LoginForm() {
               <div className="flex flex-col gap-3 pt-2">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || lockoutSeconds > 0}
                   className="w-full bg-purple-600 text-white py-3.5 rounded-2xl font-semibold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200 flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
                 >
                   {loading ? <Loader2 className="animate-spin" size={18} /> : <LogIn size={18} />}
-                  Masuk Ke Akun
+                  {lockoutSeconds > 0 ? `Coba lagi dalam ${lockoutSeconds}d` : "Masuk Ke Akun"}
                 </button>
 
                 <button
