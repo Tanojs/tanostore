@@ -4,6 +4,7 @@ import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll"; 
 import { ThemeProvider } from "@/components/theme-provider"; 
 import { BottomNav } from "@/components/BottomNav"; // <-- Import BottomNav yang baru dibuat
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -79,6 +80,7 @@ export default function RootLayout({
           {/* Navigasi Bawah nangkring di sini agar aktif secara global */}
           <BottomNav />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
